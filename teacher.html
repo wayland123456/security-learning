@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教师管理后台 · 安全e课堂</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+</head>
+<body>
+
+<!-- === 教师登录页 === -->
+<div id="teacherLogin" class="auth-page">
+  <div class="auth-bg">
+    <div class="auth-bg-shield">📊</div>
+    <div class="auth-bg-orb orb1"></div>
+    <div class="auth-bg-orb orb2"></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">📊</div>
+      <h1>教师<span class="hl">管理</span>后台</h1>
+    </div>
+    <p class="auth-subtitle">安全e课堂 · 学习进度监测</p>
+    <form class="auth-form" onsubmit="Teacher.login(event)">
+      <div class="form-group">
+        <label>教师用户名</label>
+        <input type="text" id="teacherUsername" placeholder="默认：teacher" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="teacherPassword" placeholder="默认：teacher123" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-auth">进 入 后 台</button>
+      <p class="auth-hint">仅教师账号可登录 · 学生请前往 <a href="index.html" style="color:var(--primary);">学习平台</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- === 仪表盘 === -->
+<div id="dashboard" style="display:none;">
+  <header class="teacher-header">
+    <div class="header-inner">
+      <div>
+        <h1>📊 安全e课堂 · 教师管理后台</h1>
+        <p>学生学习进度监测与数据分析</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-light" onclick="Teacher.refresh()">🔄 刷新数据</button>
+        <button class="btn btn-light" onclick="Teacher.exportCSV()">⬇️ 导出CSV</button>
+        <button class="btn btn-light" onclick="Teacher.goStudent()">🛡️ 进入学习端</button>
+        <button class="btn btn-light" onclick="Teacher.logout()">🚪 退出</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 数据概览卡片 -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-icon blue">👥</div>
+        <div>
+          <div class="stat-value" id="statTotalStudents">-</div>
+          <div class="stat-label">注册学生数</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">📈</div>
+        <div>
+          <div class="stat-value" id="statAvgProgress">-</div>
+          <div class="stat-label">平均闯关进度</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">🎯</div>
+        <div>
+          <div class="stat-value" id="statAvgScore">-</div>
+          <div class="stat-label">平均答题正确率</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">⏱️</div>
+        <div>
+          <div class="stat-value" id="statTotalTime">-</div>
+          <div class="stat-label">总学习时长</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <input type="text" class="search-box" id="searchInput" placeholder="🔍 搜索学生姓名/用户名/班级..." oninput="Teacher.renderTable()">
+      <select id="classFilter" class="search-box" style="max-width:160px;" onchange="Teacher.renderTable()">
+        <option value="">全部班级</option>
+      </select>
+      <select id="sortSelect" class="search-box" style="max-width:180px;" onchange="Teacher.renderTable()">
+        <option value="last_login">按最后登录</option>
+        <option value="progress">按闯关进度</option>
+        <option value="correct_rate">按正确率</option>
+        <option value="study_time">按学习时长</option>
+      </select>
+    </div>
+
+    <!-- 学生表格 -->
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>学生</th>
+              <th>班级</th>
+              <th>闯关进度</th>
+              <th>答题正确率</th>
+              <th>盲盒最高分</th>
+              <th>情境完成</th>
+              <th>学习时长</th>
+              <th>最后登录</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody">
+            <tr><td colspan="9" style="text-align:center;padding:3rem;color:var(--gray-400);">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 答题记录明细区 -->
+    <div id="detailSection" style="display:none;margin-top:1.5rem;">
+      <div class="detail-header">
+        <h2 id="detailTitle">📋 答题明细</h2>
+        <button class="btn btn-secondary" onclick="Teacher.closeDetail()">✕ 关闭</button>
+      </div>
+      <div class="table-wrapper">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>关卡</th>
+                <th>答对/总数</th>
+                <th>星星</th>
+                <th>用时</th>
+                <th>完成时间</th>
+              </tr>
+            </thead>
+            <tbody id="detailTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 班级分布图 -->
+    <div class="chart-section">
+      <h2>🏫 班级分布</h2>
+      <div id="classChart" class="class-chart"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* 教师后台专属样式 */
+.teacher-header {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+}
+.header-inner {
+  max-width: 1280px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+}
+.teacher-header h1 { font-size: 1.4rem; font-weight: 800; }
+.teacher-header p { opacity: 0.85; font-size: 0.88rem; margin-top: 0.2rem; }
+.header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.btn-light {
+  background: rgba(255,255,255,0.2);
+  color: #fff; border: 1px solid rgba(255,255,255,0.3);
+  padding: 8px 14px; border-radius: 10px; font-size: 0.85rem;
+  cursor: pointer; transition: var(--transition);
+}
+.btn-light:hover { background: rgba(255,255,255,0.3); }
+
+.container { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: #fff; border-radius: 16px; padding: 1.2rem 1.5rem;
+  box-shadow: var(--shadow); display: flex; align-items: center; gap: 1rem;
+}
+.stat-icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #fff; flex-shrink: 0;
+}
+.stat-icon.blue { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.stat-icon.green { background: linear-gradient(135deg, #10b981, #34d399); }
+.stat-icon.orange { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.stat-icon.red { background: linear-gradient(135deg, #ef4444, #f87171); }
+.stat-value { font-size: 1.7rem; font-weight: 800; color: var(--gray-800); line-height: 1.2; }
+.stat-label { font-size: 0.8rem; color: var(--gray-500); }
+
+.toolbar {
+  display: flex; gap: 0.8rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.search-box {
+  flex: 1; min-width: 180px; padding: 10px 14px;
+  border: 2px solid var(--gray-200); border-radius: 10px;
+  font-size: 0.9rem; outline: none; transition: var(--transition);
+  font-family: inherit;
+}
+.search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+.table-wrapper {
+  background: #fff; border-radius: 16px;
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 980px; }
+thead { background: var(--gray-50); }
+th {
+  padding: 13px 14px; text-align: left; font-size: 0.8rem;
+  font-weight: 700; color: var(--gray-600);
+  border-bottom: 2px solid var(--gray-200); white-space: nowrap;
+}
+td {
+  padding: 12px 14px; font-size: 0.88rem; color: var(--gray-700);
+  border-bottom: 1px solid var(--gray-100); white-space: nowrap;
+}
+tbody tr:hover { background: var(--gray-50); }
+.student-name { font-weight: 600; color: var(--gray-800); }
+.student-username { font-size: 0.75rem; color: var(--gray-400); }
+.progress-bar {
+  width: 80px; height: 8px; background: var(--gray-200);
+  border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle;
+}
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  border-radius: 4px; transition: width 0.4s;
+}
+.progress-text { font-size: 0.75rem; color: var(--gray-500); margin-left: 6px; }
+.tag-cls {
+  padding: 2px 8px; border-radius: 6px; font-size: 0.75rem;
+  background: #dbeafe; color: #1e40af;
+}
+.btn-sm {
+  padding: 5px 11px; border-radius: 8px; font-size: 0.78rem;
+  background: var(--primary); color: #fff; border: none; cursor: pointer;
+}
+.btn-sm:hover { background: var(--primary-dark); }
+
+.detail-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.8rem;
+}
+.detail-header h2 { font-size: 1.1rem; color: var(--gray-800); }
+
+.chart-section {
+  margin-top: 1.5rem; background: #fff; border-radius: 16px;
+  padding: 1.5rem; box-shadow: var(--shadow);
+}
+.chart-section h2 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--gray-800); }
+.class-chart { display: flex; flex-direction: column; gap: 0.8rem; }
+.class-bar-row { display: flex; align-items: center; gap: 0.8rem; }
+.class-label { width: 100px; font-size: 0.85rem; color: var(--gray-700); font-weight: 600; }
+.class-bar-bg { flex: 1; height: 24px; background: var(--gray-100); border-radius: 12px; overflow: hidden; }
+.class-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light));
+  border-radius: 12px; transition: width 0.6s; display: flex; align-items: center;
+  justify-content: flex-end; padding-right: 8px; color: #fff; font-size: 0.75rem; font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .teacher-header { padding: 1rem; }
+  .header-actions { width: 100%; }
+  .btn-light { flex: 1; padding: 8px 6px; font-size: 0.78rem; }
+}
+</style>
+
+<script>
+const Teacher = {
+  currentUser: null,
+  students: [],
+  records: [],
+
+  /* === 登录 === */
+  async login(e) {
+    e.preventDefault();
+    const username = document.getElementById('teacherUsername').value.trim();
+    const password = document.getElementById('teacherPassword').value;
+    if (!username || !password) return;
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '登录中...';
+
+    try {
+      const { data, error } = await db.from('students')
+        .select('username, display_name, role, password_hash')
+        .eq('username', username).single();
+
+      if (error || !data) { alert('用户名不存在'); return; }
+      if (data.password_hash !== password) { alert('密码错误'); return; }
+      if (data.role !== 'teacher') { alert('此账号非教师角色，无法登录后台'); return; }
+
+      this.currentUser = data;
+      localStorage.setItem('sec_teacher', JSON.stringify(data));
+      document.getElementById('teacherLogin').style.display = 'none';
+      document.getElementById('dashboard').style.display = '';
+      await this.refresh();
+    } catch (err) {
+      alert('登录失败：' + (err.message || '网络错误'));
+    } finally {
+      btn.disabled = false; btn.textContent = '进 入 后 台';
+    }
+  },
+
+  /* === 恢复登录态 === */
+  async init() {
+    const saved = localStorage.getItem('sec_teacher');
+    if (!saved) return;
+    try {
+      const user = JSON.parse(saved);
+      const { data } = await db.from('students')
+        .select('username, display_name, role').eq('username', user.username).single();
+      if (data && data.role === 'teacher') {
+        this.currentUser = data;
+        document.getElementById('teacherLogin').style.display = 'none';
+        document.getElementById('dashboard').style.display = '';
+        await this.refresh();
+      }
+    } catch (e) {}
+  },
+
+  logout() {
+    localStorage.removeItem('sec_teacher');
+    this.currentUser = null;
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('teacherLogin').style.display = '';
+  },
+
+  goStudent() { window.location.href = 'index.html'; },
+
+  /* === 演示模式 mock 数据 === */
+  loadMockData() {
+    this.students = [
+      {username:'zhang_san', display_name:'张三', class_name:'高三1班', completedLevels:6, totalCorrect:29, totalQuestions:30, correctRate:97, blindboxScore:280, scenarioCount:4, studySeconds:8400, lastLogin:new Date().toISOString()},
+      {username:'li_si', display_name:'李四', class_name:'高三1班', completedLevels:5, totalCorrect:24, totalQuestions:30, correctRate:80, blindboxScore:210, scenarioCount:3, studySeconds:6200, lastLogin:new Date(Date.now()-3600000).toISOString()},
+      {username:'wang_wu', display_name:'王五', class_name:'高三2班', completedLevels:4, totalCorrect:18, totalQuestions:25, correctRate:72, blindboxScore:160, scenarioCount:2, studySeconds:4500, lastLogin:new Date(Date.now()-7200000).toISOString()},
+      {username:'zhao_liu', display_name:'赵六', class_name:'高三2班', completedLevels:6, totalCorrect:28, totalQuestions:30, correctRate:93, blindboxScore:255, scenarioCount:4, studySeconds:7800, lastLogin:new Date().toISOString()},
+      {username:'sun_qi', display_name:'孙七', class_name:'高三3班', completedLevels:3, totalCorrect:12, totalQuestions:20, correctRate:60, blindboxScore:90, scenarioCount:1, studySeconds:2800, lastLogin:new Date(Date.now()-86400000).toISOString()},
+      {username:'zhou_ba', display_name:'周八', class_name:'高三3班', completedLevels:2, totalCorrect:8, totalQuestions:15, correctRate:53, blindboxScore:60, scenarioCount:1, studySeconds:1900, lastLogin:new Date(Date.now()-172800000).toISOString()},
+      {username:'wu_jiu', display_name:'吴九', class_name:'高三1班', completedLevels:5, totalCorrect:22, totalQuestions:28, correctRate:79, blindboxScore:195, scenarioCount:3, studySeconds:5800, lastLogin:new Date(Date.now()-1800000).toISOString()},
+      {username:'zheng_shi', display_name:'郑十', class_name:'高三2班', completedLevels:4, totalCorrect:16, totalQuestions:22, correctRate:73, blindboxScore:145, scenarioCount:2, studySeconds:3900, lastLogin:new Date(Date.now()-5400000).toISOString()},
+    ];
+    this.renderStats();
+    this.renderClassFilter();
+    this.renderTable();
+    this.renderClassChart();
+  },
+
+  /* === 加载数据 === */
+  async refresh() {
+    try {
+      // 加载所有学生（role=student）
+      const { data: students, error: e1 } = await db.from('students')
+        .select('username, display_name, class_name, created_at')
+        .eq('role', 'student').order('created_at', { ascending: false });
+      if (e1) throw e1;
+
+      // 加载所有进度
+      const { data: progress, error: e2 } = await db.from('study_progress')
+        .select('username, quiz_scores, blindbox_high_score, scenario_completed, total_study_seconds, quiz_total_correct, quiz_total_questions, last_login, last_update');
+      if (e2) throw e2;
+
+      // 合并数据
+      const progressMap = {};
+      (progress || []).forEach(p => progressMap[p.username] = p);
+
+      this.students = (students || []).map(s => {
+        const p = progressMap[s.username] || {};
+        const quizScores = p.quiz_scores || {};
+        const completedLevels = Object.keys(quizScores).length;
+        const totalCorrect = p.quiz_total_correct || Object.values(quizScores).reduce((sum, q) => sum + (q.correct||0), 0);
+        const totalQuestions = p.quiz_total_questions || Object.values(quizScores).reduce((sum, q) => sum + (q.total||0), 0);
+        return {
+          ...s,
+          completedLevels,
+          totalCorrect,
+          totalQuestions,
+          correctRate: totalQuestions > 0 ? Math.round(totalCorrect / totalQuestions * 100) : 0,
+          blindboxScore: p.blindbox_high_score || 0,
+          scenarioCount: (p.scenario_completed || []).length,
+          studySeconds: p.total_study_seconds || 0,
+          lastLogin: p.last_login,
+          lastUpdate: p.last_update
+        };
+      });
+
+      this.renderStats();
+      this.renderClassFilter();
+      this.renderTable();
+      this.renderClassChart();
+    } catch (err) {
+      console.error('加载数据失败：', err);
+      document.getElementById('studentTableBody').innerHTML =
+        `<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger);">数据加载失败：${err.message}</td></tr>`;
+    }
+  },
+
+  /* === 概览统计 === */
+  renderStats() {
+    const total = this.students.length;
+    const avgProgress = total > 0
+      ? Math.round(this.students.reduce((s, st) => s + st.completedLevels, 0) / total / 6 * 100) + '%'
+      : '0%';
+    const scored = this.students.filter(s => s.totalQuestions > 0);
+    const avgScore = scored.length > 0
+      ? Math.round(scored.reduce((s, st) => s + st.correctRate, 0) / scored.length) + '%'
+      : '0%';
+    const totalTime = this.formatTime(this.students.reduce((s, st) => s + st.studySeconds, 0));
+
+    document.getElementById('statTotalStudents').textContent = total;
+    document.getElementById('statAvgProgress').textContent = avgProgress;
+    document.getElementById('statAvgScore').textContent = avgScore;
+    document.getElementById('statTotalTime').textContent = totalTime;
+  },
+
+  /* === 班级筛选 === */
+  renderClassFilter() {
+    const classes = [...new Set(this.students.map(s => s.class_name).filter(Boolean))];
+    const sel = document.getElementById('classFilter');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">全部班级</option>' +
+      classes.map(c => `<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+  },
+
+  /* === 学生表格 === */
+  renderTable() {
+    const kw = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+    const cls = document.getElementById('classFilter').value;
+    const sortBy = document.getElementById('sortSelect').value;
+
+    let list = this.students.filter(s => {
+      if (cls && s.class_name !== cls) return false;
+      if (kw) {
+        const hay = (s.display_name + ' ' + s.username + ' ' + (s.class_name||'')).toLowerCase();
+        if (!hay.includes(kw)) return false;
+      }
+      return true;
+    });
+
+    list.sort((a, b) => {
+      if (sortBy === 'progress') return b.completedLevels - a.completedLevels;
+      if (sortBy === 'correct_rate') return b.correctRate - a.correctRate;
+      if (sortBy === 'study_time') return b.studySeconds - a.studySeconds;
+      // last_login
+      return (b.lastLogin || '').localeCompare(a.lastLogin || '');
+    });
+
+    const tbody = document.getElementById('studentTableBody');
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--gray-400);">暂无学生数据</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(s => {
+      const progressPct = Math.round(s.completedLevels / 6 * 100);
+      return `
+        <tr>
+          <td>
+            <div class="student-name">${s.display_name || s.username}</div>
+            <div class="student-username">@${s.username}</div>
+          </td>
+          <td>${s.class_name ? `<span class="tag-cls">${s.class_name}</span>` : '<span style="color:var(--gray-400)">未填</span>'}</td>
+          <td>
+            <div class="progress-bar"><div class="progress-fill" style="width:${progressPct}%"></div></div>
+            <span class="progress-text">${s.completedLevels}/6</span>
+          </td>
+          <td>${s.totalQuestions > 0 ? s.correctRate + '%<br><span class="student-username">'+s.totalCorrect+'/'+s.totalQuestions+'</span>' : '<span style="color:var(--gray-400)">未答题</span>'}</td>
+          <td>${s.blindboxScore}</td>
+          <td>${s.scenarioCount}/4</td>
+          <td>${this.formatTime(s.studySeconds)}</td>
+          <td>${s.lastLogin ? this.formatDate(s.lastLogin) : '<span style="color:var(--gray-400)">从未</span>'}</td>
+          <td><button class="btn-sm" onclick="Teacher.viewDetail('${s.username}')">📋</button></td>
+        </tr>`;
+    }).join('');
+  },
+
+  /* === 查看某学生答题明细 === */
+  async viewDetail(username) {
+    const { data, error } = await db.from('quiz_records')
+      .select('level_index, level_title, correct, total, stars, duration_sec, completed_at')
+      .eq('username', username).order('completed_at', { ascending: false });
+
+    document.getElementById('detailSection').style.display = '';
+    document.getElementById('detailTitle').textContent = `📋 ${username} 的答题明细`;
+
+    const tbody = document.getElementById('detailTableBody');
+    if (error || !data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--gray-400);">暂无答题记录</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(r => `
+      <tr>
+        <td>第${r.level_index + 1}关 ${r.level_title || ''}</td>
+        <td>${r.correct}/${r.total}</td>
+        <td>${'⭐'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)}</td>
+        <td>${r.duration_sec ? this.formatTime(r.duration_sec) : '-'}</td>
+        <td>${this.formatDate(r.completed_at)}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('detailSection').scrollIntoView({ behavior: 'smooth' });
+  },
+
+  closeDetail() {
+    document.getElementById('detailSection').style.display = 'none';
+  },
+
+  /* === 班级分布图 === */
+  renderClassChart() {
+    const classStats = {};
+    this.students.forEach(s => {
+      const cls = s.class_name || '未分班';
+      if (!classStats[cls]) classStats[cls] = { count: 0, totalCorrect: 0, totalQ: 0 };
+      classStats[cls].count++;
+      classStats[cls].totalCorrect += s.totalCorrect;
+      classStats[cls].totalQ += s.totalQuestions;
+    });
+
+    const entries = Object.entries(classStats).sort((a, b) => b[1].count - a[1].count);
+    const maxCount = Math.max(...entries.map(e => e[1].count), 1);
+
+    document.getElementById('classChart').innerHTML = entries.map(([cls, st]) => {
+      const avgRate = st.totalQ > 0 ? Math.round(st.totalCorrect / st.totalQ * 100) : 0;
+      const widthPct = st.count / maxCount * 100;
+      return `
+        <div class="class-bar-row">
+          <div class="class-label">${cls}</div>
+          <div class="class-bar-bg">
+            <div class="class-bar-fill" style="width:${widthPct}%">${st.count}人 · 正确率${avgRate}%</div>
+          </div>
+        </div>`;
+    }).join('') || '<p style="color:var(--gray-400);">暂无数据</p>';
+  },
+
+  /* === 导出 CSV === */
+  exportCSV() {
+    const rows = [['姓名','用户名','班级','闯关进度','答对数','总题数','正确率','盲盒最高分','情境完成','学习时长(秒)','最后登录']];
+    this.students.forEach(s => {
+      rows.push([
+        s.display_name, s.username, s.class_name || '',
+        s.completedLevels + '/6', s.totalCorrect, s.totalQuestions,
+        s.correctRate + '%', s.blindboxScore, s.scenarioCount + '/4',
+        s.studySeconds, s.lastLogin || ''
+      ]);
+    });
+    const csv = '\ufeff' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `学生数据_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  },
+
+  /* === 工具方法 === */
+  formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return h + '时' + m + '分';
+    if (m > 0) return m + '分';
+    return seconds + '秒';
+  },
+  formatDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+};
+
+// 启动
+document.addEventListener('DOMContentLoaded', () => {
+  // ?demo=1 进入演示模式（使用 mock 数据，无需 Supabase）
+  if (location.search.includes('demo=1')) {
+    document.getElementById('teacherLogin').style.display = 'none';
+    document.getElementById('dashboard').style.display = '';
+    Teacher.loadMockData();
+    return;
+  }
+  if (typeof db !== 'undefined') {
+    Teacher.init();
+  } else {
+    const check = setInterval(() => {
+      if (typeof db !== 'undefined') {
+        clearInterval(check);
+        Teacher.init();
+      }
+    }, 100);
+    setTimeout(() => clearInterval(check), 5000);
+  }
+});
+</script>
+</body>
+</html>

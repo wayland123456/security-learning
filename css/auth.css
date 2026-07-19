@@ -1,0 +1,273 @@
+/* ============================================
+   安全e课堂 · 登录注册页样式
+   蓝色主题，与原平台视觉统一
+   ============================================ */
+
+/* === 注册登录页 === */
+.auth-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+}
+.auth-page.hidden { display: none; }
+
+/* 背景装饰 */
+.auth-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.auth-bg-shield {
+  position: absolute;
+  top: 8%;
+  right: -3%;
+  font-size: 22rem;
+  opacity: 0.06;
+  transform: rotate(-12deg);
+}
+.auth-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+}
+.auth-bg-orb.orb1 { width: 320px; height: 320px; background: #60a5fa; top: -60px; left: -80px; }
+.auth-bg-orb.orb2 { width: 260px; height: 260px; background: #fbbf24; bottom: -40px; right: 10%; opacity: 0.2; }
+.auth-bg-orb.orb3 { width: 200px; height: 200px; background: #34d399; bottom: 20%; left: -60px; opacity: 0.18; }
+
+/* 卡片 */
+.auth-card {
+  position: relative;
+  z-index: 2;
+  width: 420px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 24px;
+  padding: 2.5rem 2.2rem;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  animation: authCardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.auth-logo-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  box-shadow: 0 8px 20px rgba(37,99,235,0.35);
+}
+.auth-logo h1 {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--gray-800);
+}
+.auth-logo h1 .hl { color: var(--primary); }
+.auth-subtitle {
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  margin-bottom: 1.6rem;
+}
+
+/* Tab 切换 */
+.auth-tabs {
+  display: flex;
+  background: var(--gray-100);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 1.5rem;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  transition: var(--transition);
+}
+.auth-tab.active {
+  background: #fff;
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* 表单 */
+.auth-form { display: flex; flex-direction: column; gap: 0.9rem; }
+.auth-form.hidden { display: none; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+.form-group .req { color: var(--danger); }
+.form-group input,
+.form-group select {
+  padding: 11px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: #fff;
+  outline: none;
+  transition: var(--transition);
+}
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.form-group input::placeholder { color: var(--gray-400); }
+
+.btn-auth {
+  margin-top: 0.6rem;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 2px;
+  box-shadow: 0 6px 16px rgba(37,99,235,0.3);
+  transition: var(--transition);
+}
+.btn-auth:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(37,99,235,0.4); }
+.btn-auth:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.auth-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin-top: 0.4rem;
+}
+.auth-divider {
+  margin-top: 1.6rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--gray-100);
+}
+
+/* === 导航栏右侧用户区 === */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.nav-progress-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: var(--gray-100);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+.nav-progress-badge i { font-style: normal; }
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  position: relative;
+}
+.nav-user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+#navUsername { font-size: 0.85rem; font-weight: 600; color: var(--gray-800); }
+.nav-role {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.nav-role.student { background: #dbeafe; color: #1e40af; }
+.nav-role.teacher { background: #fef3c7; color: #92400e; }
+
+.nav-menu-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+.nav-menu-btn:hover { background: var(--gray-200); }
+
+.nav-dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  min-width: 160px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--gray-200);
+  padding: 6px;
+  display: none;
+  z-index: 1001;
+}
+.nav-dropdown.show { display: block; animation: dropIn 0.18s ease; }
+@keyframes dropIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.nav-dropdown a {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--gray-700);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.nav-dropdown a:hover { background: var(--gray-100); color: var(--primary); }
+
+/* === 通用弹窗（修改密码等） === */
+.modal-overlay.hidden { display: none; }
+.modal-overlay.show { display: flex; }
+
+/* === 移动端适配 === */
+@media (max-width: 768px) {
+  .auth-card { padding: 2rem 1.5rem; }
+  .auth-bg-shield { font-size: 14rem; }
+  .navbar-right .nav-progress-badge { display: none; }
+  .nav-user-info { display: none; }
+}
+
+/* === Toast 类型 === */
+.toast.toast-success { background: linear-gradient(135deg, #10b981, #059669); }
+.toast.toast-error   { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.toast.toast-info    { background: linear-gradient(135deg, #3b82f6, #2563eb); }

@@ -1,0 +1,48 @@
+{
+  "name": "安全e课堂 · 网络安全知识学习平台",
+  "short_name": "安全e课堂",
+  "description": "中小学网络安全知识学习平台 - 动画学习、答题闯关、盲盒挑战、情境模拟，学习进度云端追踪",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["education", "security"],
+  "icons": [
+    {
+      "src": "img/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "学习中心",
+      "short_name": "学习",
+      "url": "./index.html#learn",
+      "icons": [{ "src": "img/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "闯关挑战",
+      "short_name": "闯关",
+      "url": "./index.html#quiz",
+      "icons": [{ "src": "img/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
