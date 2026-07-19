@@ -59,16 +59,9 @@
         <input type="text" id="regDisplayName" placeholder="如：张三" required>
       </div>
       <div class="form-group">
-        <label>班级</label>
-        <select id="regClass">
+        <label>班级 <span class="req">*</span></label>
+        <select id="regClass" required>
           <option value="">请选择班级</option>
-          <option>高三1班</option>
-          <option>高三2班</option>
-          <option>高三3班</option>
-          <option>高三4班</option>
-          <option>高三5班</option>
-          <option>高三6班</option>
-          <option>其他</option>
         </select>
       </div>
       <div class="form-group">
@@ -137,6 +130,11 @@
       <div class="hero-content">
         <h1>🛡️ 安全<span class="highlight">e</span>课堂</h1>
         <p>中小学网络安全知识学习平台 · 动画学习 + 互动游戏 + 情境实战</p>
+        <div class="hero-badges">
+          <span class="hero-badge"><span class="dot"></span>🎓 学生注册登录</span>
+          <span class="hero-badge"><span class="dot"></span>📊 教师后台监测进度</span>
+          <span class="hero-badge"><span class="dot"></span>📱 手机可安装为App</span>
+        </div>
         <div class="hero-stats">
           <div class="hero-stat">
             <div class="num">6</div>
@@ -219,8 +217,8 @@
         </div>
         <div class="feature-item">
           <div class="emoji">📱</div>
-          <h4>移动适配</h4>
-          <p>完美适配手机和平板，随时随地学习网络安全</p>
+          <h4>PWA 手机App</h4>
+          <p>支持安装到手机桌面，离线也能学，随时随地畅享网络安全教育</p>
         </div>
         <div class="feature-item">
           <div class="emoji">🎯</div>
@@ -228,9 +226,9 @@
           <p>情境模拟取材真实案例，学完就能用在实际生活中</p>
         </div>
         <div class="feature-item">
-          <div class="emoji">⚡</div>
-          <h4>纯前端运行</h4>
-          <p>无需服务器，打开即用，可部署到GitHub Pages</p>
+          <div class="emoji">📊</div>
+          <h4>教师后台监测</h4>
+          <p>教师可查看学生学习进度、答题成绩、班级分布，数据一目了然</p>
         </div>
       </div>
     </div>
@@ -324,6 +322,23 @@ document.addEventListener('click', (e) => {
     document.getElementById('navDropdown')?.classList.remove('show');
   }
 });
+
+// === 动态生成班级下拉选项（高一~高三，每年级19个班）===
+(function() {
+  const select = document.getElementById('regClass');
+  if (!select) return;
+  const grades = ['高一', '高二', '高三'];
+  let html = '<option value="">请选择班级</option>';
+  grades.forEach(g => {
+    html += `<optgroup label="${g}">`;
+    for (let i = 1; i <= 19; i++) {
+      html += `<option value="${g}${i}班">${g}${i}班</option>`;
+    }
+    html += '</optgroup>';
+  });
+  select.innerHTML = html;
+})();
+
 // PWA Service Worker 注册
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
