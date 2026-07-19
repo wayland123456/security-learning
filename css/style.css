@@ -760,42 +760,262 @@ img { max-width: 100%; }
 
 /* === 响应式 === */
 @media (max-width: 768px) {
-  .navbar { padding: 0 12px; }
-  .navbar-brand { font-size: 16px; }
-  .navbar-brand .logo { width: 32px; height: 32px; font-size: 18px; }
-  .navbar-menu { gap: 2px; }
-  .navbar-menu button { padding: 6px 10px; font-size: 13px; }
+  /* === 导航栏 === */
+  .navbar {
+    height: auto;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+  }
+  .navbar-brand { font-size: 15px; gap: 6px; }
+  .navbar-brand .logo { width: 30px; height: 30px; font-size: 16px; }
+  .navbar-menu {
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .navbar-menu button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
 
-  .hero { padding: 48px 16px 80px; }
-  .hero h1 { font-size: 28px; }
-  .hero p { font-size: 15px; }
-  .hero-stats { gap: 24px; }
-  .hero-stat .num { font-size: 28px; }
+  /* === 首页 Hero === */
+  .hero { padding: 48px 16px 72px; }
+  .hero h1 { font-size: 26px; }
+  .hero p { font-size: 15px; margin-bottom: 32px; }
+  .hero-badges { gap: 8px; margin-bottom: 24px; }
+  .hero-badge { font-size: 11px; padding: 6px 12px; }
+  .hero-badge .dot { width: 5px; height: 5px; }
+  .hero-stats { gap: 20px; margin-bottom: 36px; }
+  .hero-stat .num { font-size: 26px; }
+  .hero-stat .label { font-size: 13px; }
 
-  .module-cards { grid-template-columns: 1fr; margin-top: -40px; }
-  .feature-grid { grid-template-columns: 1fr; }
+  .module-cards { grid-template-columns: 1fr; margin-top: -40px; padding: 0 16px; }
+  .feature-grid { grid-template-columns: 1fr; gap: 16px; }
+  .feature-section { margin: 56px auto; padding: 0 16px; }
+  .section-title { margin-bottom: 36px; }
+  .section-title h2 { font-size: 26px; }
+  .feature-item { padding: 20px; }
 
+  /* === 学习中心 === */
   .learn-tabs { gap: 8px; }
   .learn-tab { padding: 8px 14px; font-size: 13px; }
-  .animation-canvas { padding: 20px 16px; min-height: 320px; }
+  .animation-canvas { padding: 20px 16px; min-height: 280px; }
+  .animation-header { padding: 16px 20px; }
+  .animation-header h2 { font-size: 18px; }
   .knowledge-cards { grid-template-columns: 1fr; }
 
-  .level-map { grid-template-columns: 1fr; }
-  .quiz-active { padding: 20px; }
-  .question-text { font-size: 20px; }
+  /* === 答题闯关 === */
+  .quiz-header { padding: 40px 16px; }
+  .quiz-header h1 { font-size: 26px; }
+  .quiz-container { padding: 24px 16px 64px; }
+  .level-map { grid-template-columns: 1fr; gap: 16px; }
+  .quiz-active { padding: 20px 16px; }
+  .question-text { font-size: 20px; margin-bottom: 20px; }
+  .question-scene { padding: 14px; font-size: 13px; }
+  .option-item { padding: 14px 16px; font-size: 14px; }
+  .option-item .option-key { width: 28px; height: 28px; font-size: 12px; }
+  .quiz-feedback { padding: 16px; margin-top: 20px; }
+  .quiz-actions { margin-top: 20px; }
 
-  .blindbox-grid { gap: 12px; }
+  /* === 盲盒挑战 === */
+  .blindbox-header { padding: 40px 16px; }
+  .blindbox-header h1 { font-size: 26px; }
+  .blindbox-container { padding: 24px 16px 64px; }
+  .blindbox-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
   .blindbox-item.unopened .box-icon { font-size: 36px; }
+  .blindbox-info { padding: 12px 16px; flex-wrap: wrap; gap: 12px; }
+  .blindbox-info .info-item { flex: 1; min-width: 100px; }
 
-  .scenario-cards { grid-template-columns: 1fr; }
+  /* === 情境模拟 === */
+  .scenario-header { padding: 40px 16px; }
+  .scenario-header h1 { font-size: 26px; }
+  .scenario-container { padding: 24px 16px 64px; }
+  .scenario-cards { grid-template-columns: 1fr; gap: 16px; }
+  .scenario-card { padding: 20px; }
+  .scenario-card .sc-icon { font-size: 36px; }
+  .scenario-card .sc-title { font-size: 16px; }
   .scenario-body { padding: 20px 16px; }
-  .level-results { grid-template-columns: repeat(2, 1fr); }
+  .scenario-narrative { padding: 16px; font-size: 14px; }
+  .scenario-choice { padding: 14px 16px; font-size: 14px; }
+  .scenario-choice .choice-icon { width: 24px; height: 24px; font-size: 12px; }
+  .scenario-game-header { padding: 16px 20px; flex-wrap: wrap; gap: 8px; }
+  .scenario-game-header h2 { font-size: 18px; }
+  .scenario-safety { width: 100%; justify-content: flex-end; margin-top: 4px; }
+  .safety-bar { width: 100px; height: 8px; }
+  .scenario-result { padding: 32px 20px; }
+  .scenario-result .result-icon { font-size: 48px; }
+  .scenario-result h3 { font-size: 20px; }
+  .scenario-result p { font-size: 14px; }
+
+  /* === 模态框 === */
+  .modal { padding: 28px; max-width: 420px; }
+  .modal .medal { font-size: 56px; }
+  .modal h2 { font-size: 22px; }
+  .modal .modal-score { font-size: 40px; }
+  .modal .modal-stars { font-size: 28px; }
+  .modal .modal-desc { font-size: 14px; }
+  .modal .modal-actions { flex-wrap: wrap; gap: 8px; }
+
+  .blindbox-modal { padding: 24px; max-width: 420px; }
+  .blindbox-modal .bb-rarity { font-size: 12px; }
+  .blindbox-modal .bb-icon { font-size: 44px; }
+  .blindbox-modal .bb-question { font-size: 16px; margin-bottom: 16px; }
+  .blindbox-modal .bb-options { gap: 8px; }
+  .blindbox-modal .bb-timer { font-size: 18px; }
+  .blindbox-modal .bb-result .bb-pts { font-size: 28px; }
+
+  /* === 结果页 === */
+  .result-page { margin: 24px auto; padding: 0 16px; }
+  .result-page .big-medal { font-size: 64px; }
+  .result-page h1 { font-size: 26px; }
+  .result-page .total-stars { font-size: 36px; }
+  .level-results { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .level-result-item { padding: 14px; }
+  .level-result-item .lr-title { font-size: 12px; }
+  .level-result-item .lr-stars { font-size: 18px; }
+
+  /* === 动画 === */
+  .crack-display { font-size: 22px; padding: 14px; min-width: 160px; }
+  .strength-bar-bg { height: 10px; }
+  .strength-label { font-size: 12px; }
+  .data-flow { height: 240px; }
+
+  /* === 页脚 === */
+  .footer { padding: 28px 16px; font-size: 13px; }
+
+  /* === Toast === */
+  .toast { padding: 10px 18px; font-size: 13px; top: 72px; }
 }
 
 @media (max-width: 480px) {
-  .navbar-menu button { padding: 6px 8px; font-size: 12px; }
-  .hero h1 { font-size: 24px; }
+  /* === 导航栏 === */
+  .navbar-menu button { padding: 4px 8px; font-size: 11px; }
+  .navbar-brand { font-size: 14px; }
+  .navbar-brand .logo { width: 28px; height: 28px; font-size: 15px; }
+
+  /* === 首页 === */
+  .hero { padding: 36px 12px 60px; }
+  .hero h1 { font-size: 22px; }
+  .hero p { font-size: 14px; margin-bottom: 24px; }
+  .hero-badges { gap: 6px; margin-bottom: 20px; }
+  .hero-badge { font-size: 10px; padding: 5px 10px; gap: 4px; }
+  .hero-badge .dot { width: 4px; height: 4px; }
+  .hero-stats { gap: 16px; margin-bottom: 28px; }
+  .hero-stat .num { font-size: 22px; }
+  .hero-stat .label { font-size: 12px; }
+
   .module-card { padding: 24px 20px; }
-  .animation-header { padding: 16px 20px; }
-  .animation-header h2 { font-size: 18px; }
+  .module-card h3 { font-size: 18px; }
+  .module-card .icon { width: 56px; height: 56px; font-size: 28px; }
+  .module-cards { padding: 0 12px; margin-top: -36px; }
+
+  .feature-grid { gap: 12px; }
+  .feature-item { padding: 16px; }
+  .feature-item .emoji { font-size: 40px; }
+  .feature-item h4 { font-size: 16px; }
+  .feature-item p { font-size: 13px; }
+  .section-title h2 { font-size: 22px; }
+  .section-title p { font-size: 14px; }
+
+  /* === 学习中心 === */
+  .learn-header { padding: 32px 12px; }
+  .learn-header h1 { font-size: 22px; }
+  .learn-header p { font-size: 14px; }
+  .learn-tabs { gap: 6px; }
+  .learn-tab { padding: 6px 12px; font-size: 12px; }
+  .learn-content { padding: 0 12px 64px; }
+  .animation-canvas { padding: 16px 12px; min-height: 240px; }
+  .animation-header { padding: 14px 16px; }
+  .animation-header h2 { font-size: 16px; }
+  .knowledge-card { padding: 16px; }
+  .knowledge-card .kc-title { font-size: 14px; }
+  .knowledge-card .kc-content { font-size: 13px; }
+
+  /* === 答题 === */
+  .quiz-header { padding: 32px 12px; }
+  .quiz-header h1 { font-size: 22px; }
+  .quiz-container { padding: 20px 12px 48px; }
+  .quiz-progress-info .q-num { font-size: 14px; }
+  .quiz-progress-info .q-score { font-size: 13px; }
+  .quiz-progress-bar { margin-bottom: 20px; }
+  .question-type { font-size: 11px; padding: 3px 10px; }
+  .question-text { font-size: 18px; line-height: 1.5; margin-bottom: 20px; }
+  .question-scene { padding: 12px; font-size: 13px; }
+  .option-item { padding: 12px 14px; font-size: 14px; gap: 10px; }
+  .option-item .option-key { width: 26px; height: 26px; font-size: 11px; }
+  .quiz-feedback { padding: 14px; }
+  .quiz-feedback h4 { font-size: 14px; }
+  .quiz-feedback p { font-size: 13px; }
+  .btn { padding: 10px 20px; font-size: 14px; }
+  .btn-large { padding: 12px 24px; font-size: 15px; }
+
+  /* === 盲盒 === */
+  .blindbox-header { padding: 32px 12px; }
+  .blindbox-header h1 { font-size: 22px; }
+  .blindbox-container { padding: 20px 12px 48px; }
+  .blindbox-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .blindbox-item.unopened .box-icon { font-size: 32px; }
+  .blindbox-item.opened .box-icon { font-size: 28px; }
+  .blindbox-info { padding: 10px 14px; }
+  .blindbox-info .info-item .value { font-size: 20px; }
+
+  /* === 情境 === */
+  .scenario-header { padding: 32px 12px; }
+  .scenario-header h1 { font-size: 22px; }
+  .scenario-container { padding: 20px 12px 48px; }
+  .scenario-card { padding: 16px; }
+  .scenario-card .sc-icon { font-size: 32px; }
+  .scenario-card .sc-title { font-size: 15px; }
+  .scenario-card .sc-desc { font-size: 13px; }
+  .scenario-body { padding: 16px 12px; }
+  .scenario-narrative { padding: 14px; font-size: 13px; }
+  .scenario-choice { padding: 12px 14px; font-size: 14px; gap: 10px; }
+  .scenario-choice .choice-icon { width: 22px; height: 22px; font-size: 11px; }
+  .scenario-game-header { padding: 14px 16px; }
+  .scenario-game-header h2 { font-size: 16px; }
+  .scenario-safety { font-size: 13px; }
+  .scenario-result { padding: 24px 16px; }
+  .scenario-result .result-icon { font-size: 40px; }
+  .scenario-result h3 { font-size: 18px; }
+  .scenario-result p { font-size: 13px; }
+  .scenario-result .result-stats { gap: 20px; }
+  .scenario-result .result-stat .num { font-size: 28px; }
+
+  /* === 模态框 === */
+  .modal { padding: 24px; width: 92%; }
+  .modal .medal { font-size: 48px; }
+  .modal h2 { font-size: 20px; }
+  .modal .modal-score { font-size: 32px; }
+  .modal .modal-stars { font-size: 24px; }
+  .modal .modal-desc { font-size: 13px; }
+  .modal .modal-actions { flex-direction: column; gap: 8px; }
+  .modal .modal-actions .btn { width: 100%; }
+
+  .blindbox-modal { padding: 20px; width: 92%; }
+  .blindbox-modal .bb-icon { font-size: 40px; }
+  .blindbox-modal .bb-question { font-size: 15px; }
+  .blindbox-modal .bb-options { gap: 8px; }
+  .blindbox-modal .bb-timer { font-size: 16px; }
+
+  /* === 结果页 === */
+  .result-page .big-medal { font-size: 48px; }
+  .result-page h1 { font-size: 22px; }
+  .result-page .total-stars { font-size: 28px; }
+  .level-results { grid-template-columns: 1fr; gap: 8px; }
+  .level-result-item { padding: 12px; }
+
+  /* === 动画 === */
+  .crack-display { font-size: 18px; padding: 12px; min-width: 140px; }
+  .strength-bar-bg { height: 8px; }
+  .strength-label { font-size: 11px; }
+
+  /* === 页脚 === */
+  .footer { padding: 24px 12px; font-size: 12px; }
 }
