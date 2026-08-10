@@ -5,7 +5,7 @@
    - 跳过 Supabase API 请求（不缓存）
    ============================================ */
 
-const CACHE_NAME = 'security-e-class-v1';
+const CACHE_NAME = 'security-e-class-v2';
 
 const CRITICAL_ASSETS = [
   './',

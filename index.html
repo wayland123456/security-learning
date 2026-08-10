@@ -80,6 +80,13 @@
       <p class="auth-hint">注册即创建学生账号，可记录学习进度</p>
     </form>
 
+    <!-- 游客体验 -->
+    <div class="auth-guest-section">
+      <div class="auth-guest-divider"><span>或</span></div>
+      <button type="button" class="btn-guest" onclick="Auth.handleLoginAsGuest()">👀 游客体验</button>
+      <p class="auth-hint" style="margin-top:0.5rem;">无需注册，即可浏览学习内容（不记录学习进度）</p>
+    </div>
+
     <div class="auth-divider">校园网络安全教育 · 寓教于乐</div>
   </div>
 </div>
@@ -112,9 +119,10 @@
       <div class="nav-user-menu">
         <button class="nav-menu-btn" onclick="toggleUserMenu()">⋮</button>
         <div class="nav-dropdown" id="navDropdown">
-          <a href="javascript:Auth.showChangePassword()">🔑 修改密码</a>
+          <a href="javascript:Auth.showChangePassword()" id="menuChangePwd">🔑 修改密码</a>
           <a href="javascript:Auth.goTeacher()" id="teacherEntry" style="display:none;">📊 教师后台</a>
-          <a href="javascript:Auth.logout()">🚪 退出登录</a>
+          <a href="javascript:Auth.logout()" id="menuLogout">🚪 退出登录</a>
+          <a href="javascript:Auth.logout()" id="menuRegister" style="display:none;">📝 登录/注册</a>
         </div>
       </div>
     </div>

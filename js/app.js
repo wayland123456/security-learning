@@ -9,8 +9,8 @@ const Storage = {
   get: (key, def) => { try { return JSON.parse(localStorage.getItem('sec_' + key)) ?? def; } catch { return def; } },
   set: (key, val) => {
     try { localStorage.setItem('sec_' + key, JSON.stringify(val)); } catch {}
-    // 若已登录，触发云端同步
-    if (typeof Auth !== 'undefined' && Auth.currentUsername) {
+    // 游客模式不触发云端同步
+    if (typeof Auth !== 'undefined' && Auth.currentUsername && !Auth.isGuest) {
       Auth.saveProgress({
         quizScores: Storage.get('quizScores', {}),
         blindboxHighScore: Storage.get('blindboxHighScore', 0),
@@ -587,8 +587,8 @@ const Quiz = {
       };
       Storage.set('quizScores', this.state.levelScores);
 
-      // 上报本次答题明细到云端（供教师后台查看）
-      if (typeof Auth !== 'undefined' && Auth.currentUsername) {
+      // 上报本次答题明细到云端（供教师后台查看），游客模式跳过
+      if (typeof Auth !== 'undefined' && Auth.currentUsername && !Auth.isGuest) {
         const stars = this.calcStars(finalCorrect);
         const duration = Math.floor((Date.now() - (this.state.levelStartTime || Date.now())) / 1000);
         Auth.reportQuizRecord(this.state.currentLevel, level.title || ('第'+(this.state.currentLevel+1)+'关'), finalCorrect, finalTotal, stars, duration);

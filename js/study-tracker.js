@@ -48,7 +48,7 @@ const StudyTracker = {
     },
 
     async _syncNow(useBeacon) {
-        if (!Auth.currentUsername) return;
+        if (!Auth.currentUsername || Auth.isGuest) return;
         if (this.totalSeconds === this.lastSyncSeconds) return;
 
         const payload = {

@@ -13,6 +13,7 @@
 const Auth = {
     currentUser: null,      // { username, display_name, class_name, role }
     currentUsername: null,
+    isGuest: false,         // 游客模式：无需注册即可浏览，不记录进度
 
     /* ---------- 初始化（页面加载时调用） ---------- */
     async init() {
@@ -21,6 +22,16 @@ const Auth = {
 
         try {
             const user = JSON.parse(saved);
+
+            // 游客用户无需 Supabase 验证，直接恢复
+            if (user.role === 'guest') {
+                this.currentUser = user;
+                this.currentUsername = user.username;
+                this.isGuest = true;
+                this.onLoginSuccess(true);
+                return true;
+            }
+
             // 验证用户是否仍存在于 Supabase
             const { data, error } = await db
                 .from('students')
@@ -31,6 +42,7 @@ const Auth = {
             if (data && !error) {
                 this.currentUser = data;
                 this.currentUsername = data.username;
+                this.isGuest = false;
                 this.onLoginSuccess(true);  // 静默登录
                 return true;
             } else {
@@ -40,8 +52,16 @@ const Auth = {
         } catch (e) {
             // 网络错误时，若本地有缓存则继续使用本地（离线模式）
             const user = JSON.parse(saved);
+            if (user.role === 'guest') {
+                this.currentUser = user;
+                this.currentUsername = user.username;
+                this.isGuest = true;
+                this.onLoginSuccess(true);
+                return true;
+            }
             this.currentUser = user;
             this.currentUsername = user.username;
+            this.isGuest = false;
             this.onLoginSuccess(true);
             return true;
         }
@@ -77,6 +97,25 @@ const Auth = {
         this.onLoginSuccess(false);
         this._recordLogin();
         return { success: true, message: `欢迎回来，${data.display_name || username}！` };
+    },
+
+    /* ---------- 游客模式：无需注册直接进入 ---------- */
+    loginAsGuest() {
+        // 如果已登录，先退出
+        if (this.currentUser && !this.isGuest) {
+            this.logout();
+        }
+
+        this.currentUser = {
+            username: '__guest__',
+            display_name: '游客模式',
+            class_name: '',
+            role: 'guest'
+        };
+        this.currentUsername = '__guest__';
+        this.isGuest = true;
+        localStorage.setItem('sec_currentUser', JSON.stringify(this.currentUser));
+        this.onLoginSuccess(false);
     },
 
     /* ---------- 注册（学生申请登录学习） ---------- */
@@ -126,12 +165,13 @@ const Auth = {
 
     /* ---------- 退出 ---------- */
     logout() {
-        // 同步最后一次进度
-        if (typeof StudyTracker !== 'undefined') {
+        // 同步最后一次进度（游客跳过）
+        if (!this.isGuest && typeof StudyTracker !== 'undefined') {
             StudyTracker._syncNow(false);
         }
         this.currentUser = null;
         this.currentUsername = null;
+        this.isGuest = false;
         localStorage.removeItem('sec_currentUser');
         document.getElementById('page-auth').classList.remove('hidden');
         document.getElementById('app-container').style.display = 'none';
@@ -147,21 +187,38 @@ const Auth = {
 
         const user = this.currentUser;
         document.getElementById('navUsername').textContent = user.display_name || user.username;
-        document.getElementById('navUserRole').textContent = user.role === 'teacher' ? '教师' : '学生';
+        document.getElementById('navUserRole').textContent = user.role === 'teacher' ? '教师' : (user.role === 'guest' ? '游客' : '学生');
         document.getElementById('navUserRole').className = 'nav-role ' + user.role;
 
-        // 从云端加载进度到本地
-        this.loadProgress();
-        // 启动学习时长追踪
-        if (typeof StudyTracker !== 'undefined') {
-            StudyTracker.init();
+        // 游客模式：隐藏修改密码/教师后台，显示注册入口
+        if (this.isGuest) {
+            document.getElementById('menuChangePwd').style.display = 'none';
+            document.getElementById('teacherEntry').style.display = 'none';
+            document.getElementById('menuLogout').style.display = 'none';
+            document.getElementById('menuRegister').style.display = '';
+        } else {
+            document.getElementById('menuChangePwd').style.display = '';
+            document.getElementById('menuLogout').style.display = '';
+            document.getElementById('menuRegister').style.display = 'none';
         }
+
+        // 游客模式不加载进度、不启动学习追踪
+        if (!this.isGuest) {
+            this.loadProgress();
+            if (typeof StudyTracker !== 'undefined') {
+                StudyTracker.init();
+            }
+        }
+
         // 刷新页面
         App.go('home');
         App.updateProgress();
 
         if (!silent) {
-            App.toast(`欢迎回来，${user.display_name || user.username}！`, 'success');
+            const msg = this.isGuest
+                ? '正在以游客模式浏览（进度不会保存）'
+                : `欢迎回来，${user.display_name || user.username}！`;
+            App.toast(msg, this.isGuest ? 'info' : 'success');
         }
     },
 
@@ -179,7 +236,7 @@ const Auth = {
 
     /* ---------- 保存进度（写 localStorage + 异步同步 Supabase） ---------- */
     saveProgress(progress) {
-        if (!this.currentUsername) return;
+        if (!this.currentUsername || this.isGuest) return;
 
         // 1. 同步写 localStorage（兼容现有 Storage 模块）
         const all = JSON.parse(localStorage.getItem('sec_progress') || '{}');
@@ -295,6 +352,7 @@ const Auth = {
 
     /* ---------- 修改密码 ---------- */
     showChangePassword() {
+        if (this.isGuest) { App.toast('游客模式不支持修改密码，请先注册', 'info'); return; }
         document.getElementById('changePwdOverlay').classList.remove('hidden');
         ['oldPassword', 'newPassword', 'newPassword2'].forEach(id => document.getElementById(id).value = '');
     },
@@ -366,6 +424,11 @@ const Auth = {
         } finally {
             btn.disabled = false; btn.textContent = oldText;
         }
+    },
+
+    /* ---------- 游客体验入口 ---------- */
+    handleLoginAsGuest() {
+        this.loginAsGuest();
     },
 
     /* ---------- 跳转教师后台 ---------- */
