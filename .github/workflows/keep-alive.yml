@@ -1,10 +1,10 @@
 name: Supabase Keep Alive
 
-# 每 12 小时自动访问一次 Supabase API，防止自由层项目因无活动被暂停
+# 每 5 天自动访问一次 Supabase API，防止自由层项目因无活动被暂停
 # Supabase 自由层项目 7 天无活动会自动暂停
 on:
   schedule:
-    - cron: '0 0,12 * * *'  # UTC 0:00 和 12:00 = 北京时间 8:00 和 20:00
+    - cron: '0 0 */5 * *'  # 每 5 天一次（UTC 0:00 = 北京时间 8:00）
   workflow_dispatch:        # 也支持手动触发
 
 jobs:
