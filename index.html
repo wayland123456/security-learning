@@ -356,8 +356,7 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <!-- === 脚本引入（顺序重要） === -->
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase SDK 已改为按需加载（见 supabase-config.js 的 ensureDB），不再阻塞首屏 -->
 <!-- 数据 -->
 <script src="js/data.js"></script>
 <!-- Supabase 配置 -->
@@ -376,6 +375,8 @@ if ('serviceWorker' in navigator) {
     if (!loggedIn) {
       // 未登录，显示登录页
       document.getElementById('page-auth').classList.remove('hidden');
+      // 空闲时预下载 SDK，学生输入账号密码时通常已就绪
+      preloadSupabase(4000);
     } else if (Auth.currentUser && Auth.currentUser.role === 'teacher') {
       // 教师登录后显示「教师后台」入口
       document.getElementById('teacherEntry').style.display = '';

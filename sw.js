@@ -5,7 +5,7 @@
    - 跳过 Supabase API 请求（不缓存）
    ============================================ */
 
-const CACHE_NAME = 'security-e-class-v3';
+const CACHE_NAME = 'security-e-class-v4';
 
 const CRITICAL_ASSETS = [
   './',
@@ -13,6 +13,7 @@ const CRITICAL_ASSETS = [
   './teacher.html',
   './css/style.css',
   './css/auth.css',
+  './js/supabase.js',
   './js/data.js',
   './js/app.js',
   './js/supabase-config.js',
@@ -23,13 +24,20 @@ const CRITICAL_ASSETS = [
   './img/icons/icon-512.png'
 ];
 
+// 单个资源最多等 8 秒，避免某个资源卡住导致整个 install 永远不完成（SW 无法激活）
+const addWithTimeout = (cache, url, ms = 8000) =>
+  Promise.race([
+    cache.add(url).catch(err => console.warn('缓存失败:', url, err)),
+    new Promise(resolve => setTimeout(resolve, ms))
+  ]);
+
 // Install: 预缓存关键资源
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // 单个资源失败不影响整体
       return Promise.allSettled(
-        CRITICAL_ASSETS.map(url => cache.add(url).catch(err => console.warn('缓存失败:', url, err)))
+        CRITICAL_ASSETS.map(url => addWithTimeout(cache, url))
       );
     })
   );

@@ -81,8 +81,10 @@ const StudyTracker = {
             return;
         }
 
+        let client;
+        try { client = await ensureDB(); } catch (e) { return; }
         try {
-            const { error } = await db.from('study_progress')
+            const { error } = await client.from('study_progress')
                 .upsert([payload], { onConflict: 'username' });
             if (error && !['PGRST204', '42703'].includes(error.code)) {
                 console.warn('[StudyTracker] 同步失败：', error.message);

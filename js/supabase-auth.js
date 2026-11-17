@@ -15,65 +15,85 @@ const Auth = {
     currentUsername: null,
     isGuest: false,         // 游客模式：无需注册即可浏览，不记录进度
 
-    /* ---------- 初始化（页面加载时调用） ---------- */
+    /* ---------- 初始化（页面加载时调用，不阻塞首屏） ---------- */
     async init() {
         const saved = localStorage.getItem('sec_currentUser');
-        if (!saved) return false;
+        if (!saved) return false;          // 未登录：完全不需要 SDK
+
+        let user;
+        try {
+            user = JSON.parse(saved);
+        } catch (e) {
+            localStorage.removeItem('sec_currentUser');
+            return false;
+        }
+
+        // 游客模式：不碰数据库
+        if (user.role === 'guest') {
+            this.currentUser = user;
+            this.currentUsername = user.username;
+            this.isGuest = true;
+            this.onLoginSuccess(true);
+            return true;
+        }
+
+        // 已登录：先用本地缓存立即进入界面，SDK 加载和云端校验放到后台
+        this.currentUser = user;
+        this.currentUsername = user.username;
+        this.isGuest = false;
+        this.onLoginSuccess(true);
+
+        this._verifyInBackground(user);    // 不 await，避免阻塞首屏
+        return true;
+    },
+
+    /* ---------- 后台校验登录态（网络/SDK 失败时保持本地登录，不踢人） ---------- */
+    async _verifyInBackground(user) {
+        let client;
+        try {
+            client = await ensureDB();
+        } catch (e) {
+            console.warn('[Auth] SDK 未就绪，使用本地缓存（离线模式）：', e.message);
+            return;
+        }
 
         try {
-            const user = JSON.parse(saved);
-
-            // 游客用户无需 Supabase 验证，直接恢复
-            if (user.role === 'guest') {
-                this.currentUser = user;
-                this.currentUsername = user.username;
-                this.isGuest = true;
-                this.onLoginSuccess(true);
-                return true;
-            }
-
-            // 验证用户是否仍存在于 Supabase
-            const { data, error } = await db
+            const { data, error } = await client
                 .from('students')
                 .select('username, display_name, class_name, role')
                 .eq('username', user.username)
                 .single();
 
             if (data && !error) {
+                // 以云端资料为准（可能改过姓名或班级）
                 this.currentUser = data;
                 this.currentUsername = data.username;
-                this.isGuest = false;
-                this.onLoginSuccess(true);  // 静默登录
-                return true;
-            } else {
-                // 用户已被删除，清除本地
+                const el = document.getElementById('navUsername');
+                if (el) el.textContent = data.display_name || data.username;
+                return;
+            }
+
+            // 查无此行 → 账号确实已被删除
+            if (error && (error.code === 'PGRST116' || /0 rows|no rows/i.test(error.message || ''))) {
                 localStorage.removeItem('sec_currentUser');
+                if (typeof App !== 'undefined') App.toast('账号已失效，请重新登录', 'error');
+                this.logout();
             }
+            // 其他错误（网络/权限）保持本地登录态，不处理
         } catch (e) {
-            // 网络错误时，若本地有缓存则继续使用本地（离线模式）
-            const user = JSON.parse(saved);
-            if (user.role === 'guest') {
-                this.currentUser = user;
-                this.currentUsername = user.username;
-                this.isGuest = true;
-                this.onLoginSuccess(true);
-                return true;
-            }
-            this.currentUser = user;
-            this.currentUsername = user.username;
-            this.isGuest = false;
-            this.onLoginSuccess(true);
-            return true;
+            console.warn('[Auth] 登录态校验跳过：', e.message);
         }
-        return false;
     },
 
     /* ---------- 登录 ---------- */
     async login(username, password) {
-        if (typeof db === 'undefined' || !db) {
-            return { success: false, message: '系统未就绪，请检查 Supabase 配置' };
+        let client;
+        try {
+            client = await ensureDB();
+        } catch (e) {
+            return { success: false, message: '网络较慢，依赖库还没加载完，请再点一次登录' };
         }
-        const { data, error } = await db
+        const { data, error } = await client
             .from('students')
             .select('username, display_name, class_name, role, password_hash')
             .eq('username', username.trim())
@@ -133,8 +153,15 @@ const Auth = {
             return { success: false, message: '请填写真实姓名' };
         }
 
+        let client;
+        try {
+            client = await ensureDB();
+        } catch (e) {
+            return { success: false, message: '网络较慢，依赖库还没加载完，请稍后再试' };
+        }
+
         // 检查用户名是否已存在
-        const { data: existing } = await db
+        const { data: existing } = await client
             .from('students')
             .select('username')
             .eq('username', username.trim())
@@ -145,7 +172,7 @@ const Auth = {
         }
 
         // 插入新学生
-        const { error } = await db
+        const { error } = await client
             .from('students')
             .insert([{
                 username: username.trim(),
@@ -243,20 +270,34 @@ const Auth = {
         all[this.currentUsername] = progress;
         localStorage.setItem('sec_progress', JSON.stringify(all));
 
-        // 2. 异步写 Supabase
+        // 2. 若 SDK 尚未就绪，打脏标记，等就绪后补传，避免被云端旧数据覆盖
+        if (!db) {
+            localStorage.setItem(this._dirtyKey(), '1');
+            ensureDB().catch(() => {});
+            return;
+        }
+
+        // 3. 异步写 Supabase
         this._syncToCloud(progress);
+    },
+
+    /* 本地未同步标记的 key */
+    _dirtyKey() {
+        return 'sec_progress_dirty_' + this.currentUsername;
     },
 
     /* ---------- 异步同步进度到云端 ---------- */
     async _syncToCloud(progress) {
-        if (!this.currentUsername || !db) return;
+        if (!this.currentUsername) return;
+        let client;
+        try { client = await ensureDB(); } catch (e) { return; }
         try {
             const totalCorrect = Object.values(progress.quizScores || {})
                 .reduce((sum, s) => sum + (s.correct || 0), 0);
             const totalQuestions = Object.values(progress.quizScores || {})
                 .reduce((sum, s) => sum + (s.total || 0), 0);
 
-            const { error } = await db
+            const { error } = await client
                 .from('study_progress')
                 .upsert([{
                     username: this.currentUsername,
@@ -279,10 +320,12 @@ const Auth = {
 
     /* ---------- 记录登录时间 ---------- */
     async _recordLogin() {
-        if (!this.currentUsername || !db) return;
+        if (!this.currentUsername) return;
+        let client;
+        try { client = await ensureDB(); } catch (e) { return; }
         const now = new Date().toISOString();
         try {
-            await db.from('study_progress')
+            await client.from('study_progress')
                 .upsert([{
                     username: this.currentUsername,
                     last_login: now,
@@ -293,9 +336,19 @@ const Auth = {
 
     /* ---------- 从云端加载进度到本地 ---------- */
     async loadProgress() {
-        if (!this.currentUsername || !db) return;
+        if (!this.currentUsername) return;
+        let client;
+        try { client = await ensureDB(); } catch (e) { return; }
+
+        // 本地有未同步的进度：先补传，避免被云端旧数据覆盖
+        if (localStorage.getItem(this._dirtyKey())) {
+            const local = this.getProgress();
+            if (local) await this._syncToCloud(local);
+            localStorage.removeItem(this._dirtyKey());
+        }
+
         try {
-            const { data, error } = await db
+            const { data, error } = await client
                 .from('study_progress')
                 .select('quiz_scores, blindbox_high_score, scenario_completed, learned_topics, total_study_seconds')
                 .eq('username', this.currentUsername)
@@ -334,9 +387,11 @@ const Auth = {
 
     /* ---------- 上报单次答题记录（供教师查看明细） ---------- */
     async reportQuizRecord(levelIndex, levelTitle, correct, total, stars, durationSec) {
-        if (!this.currentUsername || !db) return;
+        if (!this.currentUsername) return;
+        let client;
+        try { client = await ensureDB(); } catch (e) { return; }
         try {
-            await db.from('quiz_records').insert([{
+            await client.from('quiz_records').insert([{
                 username: this.currentUsername,
                 level_index: levelIndex,
                 level_title: levelTitle,
@@ -368,12 +423,16 @@ const Auth = {
         if (newPwd !== newPwd2) { App.toast('两次新密码不一致', 'error'); return; }
         if (newPwd.length < 4) { App.toast('新密码至少 4 位', 'error'); return; }
 
-        const { data, error } = await db.from('students')
+        let client;
+        try { client = await ensureDB(); } catch (err) {
+            App.toast('网络较慢，请稍后重试', 'error'); return;
+        }
+        const { data, error } = await client.from('students')
             .select('password_hash').eq('username', this.currentUsername).single();
         if (error || !data || data.password_hash !== oldPwd) {
             App.toast('当前密码错误', 'error'); return;
         }
-        const { error: updateError } = await db.from('students')
+        const { error: updateError } = await client.from('students')
             .update({ password_hash: newPwd }).eq('username', this.currentUsername);
         if (updateError) { App.toast('修改失败，请重试', 'error'); }
         else { App.toast('密码修改成功！', 'success'); this.closeChangePassword(); }
