@@ -646,6 +646,18 @@ function settleScore(s, content) {
   return s;
 }
 
+/* 升格示范的长度红线：模型偶尔会把 7 个词的句子改成 15 个词（又长又绕），
+   老师要的是「学生能直接抄」，所以这里用代码卡住——
+   超过原句 1.4 倍（且至少多 3 词）的，直接丢掉，不进报告。 */
+function trimPolish(list) {
+  const wc = (s) => (String(s || '').match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+  return (Array.isArray(list) ? list : []).filter((p) => {
+    const o = wc(p && p.original), n = wc(p && p.polished);
+    if (!o || !n) return true;
+    return n <= Math.max(Math.ceil(o * 1.4), o + 3);
+  });
+}
+
 /* 把后端 / 模型返回统一成前端渲染用的结构 */
 function normalizeScore(json, type, content) {
   const t = (json.type || type || 'applied') === 'continuation' ? 'continuation' : 'applied';
@@ -669,7 +681,7 @@ function normalizeScore(json, type, content) {
     deductions: json.deductions || [],
     summary: json.summary || '',
     highlights: json.highlights || [],
-    polishExamples: json.polish_examples || json.polishExamples || [],
+    polishExamples: trimPolish(json.polish_examples || json.polishExamples || []),
     gainPlan: json.gain_plan || json.gainPlan || [],
     issues: normIssues,
     suggestions: normSuggestions
@@ -972,10 +984,10 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
   "polish_examples": [
     {
       "original": "<学生原文原句，必须能在原文中找到>",
-      "issue": "<这句的具体毛病，10-25 字>",
-      "polished": "<升格示范：英语原句 + 中文说明，换上就能用>",
-      "technique": "<改写手法，如：非谓语作状语 / 定语从句 / 倒装 / 细节描写>",
-      "gain": "<换上可多得几分，如 +1~2 分>"
+      "issue": "<必须用错误类型开头：语序错误/搭配错误/缺成分/用词错误/从句错误/意思不清 + 具体说明，10-20 字>",
+      "polished": "<升格：不超过原句 1.3 倍长、只加 1 个结构、词汇都在考纲内的英文原句（中文说明放括号里）>",
+      "technique": "<大白话 ≤12 字，如：定语从句 / 非谓语作状语 / 加一个具体例子>",
+      "gain": "<最多 +1 分；没错的句子不要列进来>"
     }
   ],
   "gain_plan": [
@@ -1045,7 +1057,31 @@ ${rubric}
 5. 总分高于 ${m.high} 分时，tierReason 必须逐条说明为什么够高档，否则退回下一档。
 6. 引用原文必须真实存在，不许编造学生没写过的句子。
 7. 升格示范要给「换上就能用」的英语原句，不许写"可考虑使用更高级的词汇"这类空话。
+   也不许把本来就正确、只是朴素的句子硬挑出来改——升格只针对真错和真平铺。
 8. 只按【评分标准】里写明的采分点判分，不许自行发明题目没有要求的条件（例如额外要求"必须有独立标题""必须写身份句"）。找不到扣分依据就给分。
+
+【升格示范的难度红线（高中生看完要能直接抄去用）】
+· polish_examples 给 2–3 条即可，宁缺毋滥：只挑「语法有错」或「明显平铺罗列」的句子。
+  语法正确、意思清楚的句子（哪怕朴素）一律不许进清单——「不够华丽」不是毛病。
+  真找不到 2 条合格的，给 1 条也行，绝对不许为凑数去挑范文里本来没错的好句子。
+· 长度：不超过原句的 1.3 倍。原句 20 词，升格就别超过 26 词，不许改成又长又绕的复合长句。
+· 结构：整句只加 1 个结构（一个定语从句 / 一个非谓语短语 / 一个倒装 / 一个强调句），不许层层嵌套。
+· 词汇：只用高考考纲 3500 词和人教版教材里出现过的词。禁止超纲词和书面生僻词
+  （如 engage with、living wisdom、resonate、profound、transformative、immerse 这一类），
+  拿不准就换回最常见的词（make ... better / help me understand ... / I can ... now）。
+· 读一遍要顺：高一学生看完能马上模仿，才算合格；写完自己读一遍，拗口就再改简单点。
+· issue 只写「错在哪、缺什么」，不许写「力度不足」「不够高级」「偏弱」这类主观评价。
+· technique 用大白话，≤ 12 字（如「定语从句」「非谓语作状语」「加一个具体例子」），
+  禁止「对比结构 + 现在进行时强化主体性」这类术语堆砌。
+· gain 只有确实提分才写，最多 +1 分；范文级的好句子不许标 +1~2 分。
+· 改写的唯一准入标准：这句话有**语法错、搭配错、或读不懂**。
+  下列理由一律不算问题，出现了就说明你在吹毛求疵：「并列句平淡」「稍显笼统」「可以更具体」
+  「语气绝对化」「不够地道」「偏弱」「未呼应开头」——这些是风格偏好，不是错误。
+· 一篇本身写得干净、找不出硬伤的作文，polish_examples 直接给空数组 []。
+  报告里没有「升格示范」这一节完全没关系——好作文本来就不需要改，硬凑反而误导学生。
+· **每条改写必须自证**：issue 一律以错误类型开头——「语序错误 / 搭配错误 / 时态错误 / 缺成分 /
+  用词错误 / 从句错误 / 意思不清」。写不出具体错误类型，就说明这句没错，直接删掉这条。
+· 生成完通读一遍：逐条问「这句到底错在哪」，答不出来就删；删空了就给 []，这是允许的、也是正确的。
 
 ${schema}
 
