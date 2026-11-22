@@ -954,37 +954,41 @@ const RUBRIC_CONTINUATION = `【高考英语读后续写 25 分 · 五档评分�
 
 /* 统一输出 JSON 结构（两套共用，只按题型替换满分、维度名与高档线） */
 const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，禁止任何前后缀解释或 Markdown 代码块）
+【篇幅限制（为了速度，务必严格遵守，超了会被截断）】
+· tierReason ≤ 100 字；每个维度的 reason ≤ 30 字；summary ≤ 40 字
+· polish_examples 只给 2 条；gain_plan 只给 3 步；issues 只给 2 条；suggestions 只给 2 条
+· 每条 highlights ≤ 12 字；每条 suggestions ≤ 18 字；polished 的中文说明 ≤ 15 字
 {
   "type": "$TYPE",
   "maxScore": $MAX,
-  "tier": "<档位全称，如：第五档（13-15分）>",
+  "tier": "<档位全称，如：第三档（7-9分）>",
   "tierIndex": <5 到 1 的整数>,
-  "total": <总分 0-$MAX，已含硬性扣分>,
-  "tierReason": "<100-200 字。先说明判为这一档的依据（对照五档描述的哪几条），再说明为什么不是上一档、为什么不是下一档。总分高于 $HIGHLINE 时必须逐条说明为何够高档>",
+  "total": <总分 0-$MAX>,
+  "tierReason": "<≤100 字：为什么是这一档、为什么不是上一档、为什么不是下一档>",
   "dimensions": [
     $DIMENSIONS
   ],
   "deductions": [
-    {"item": "<扣分项，如：缺④收束（没有致谢）>", "points": <负数，如 -2>}
+    {"item": "<扣分项>", "points": <负数>}
   ],
-  "summary": "<一句话核心评价，30-60 字，给学生看的>",
-  "highlights": ["<亮点1>", "<亮点2>", "<亮点3>"],
+  "summary": "<≤40 字，一句话核心评价>",
+  "highlights": ["<亮点>", "<亮点>", "<亮点>"],
   "polish_examples": [
     {
-      "original": "<学生原文原句，必须能在原文中找到>",
-      "issue": "<这句的具体毛病，10-25 字>",
-      "polished": "<升格示范：英语原句 + 中文说明，换上就能用>",
-      "technique": "<改写手法，如：非谓语作状语 / 定语从句 / 倒装 / 细节描写>",
-      "gain": "<换上可多得几分，如 +1~2 分>"
+      "original": "<原文原句>",
+      "issue": "<毛病，≤15 字>",
+      "polished": "<升格英语原句>（<中文说明，≤15 字>）",
+      "technique": "<手法>",
+      "gain": "<+X 分>"
     }
   ],
   "gain_plan": [
-    {"step": 1, "task": "<具体修改动作>", "expected": "<预期提分，如 +2~3 分>", "difficulty": "简单/中等/困难"}
+    {"step": 1, "task": "<动作，≤20 字>", "expected": "<+X 分>", "difficulty": "简单/中等/困难"}
   ],
   "issues": [
-    {"title": "<问题小标题>", "body": "<问题描述，含原文例证>", "gain": "<修好可多得几分>"}
+    {"title": "<小标题，≤10 字>", "body": "<≤30 字，含原文例证>", "gain": "<修好可得几分>"}
   ],
-  "suggestions": ["<可操作短建议1>", "<建议2>", "<建议3>"]
+  "suggestions": ["<≤18 字>", "<≤18 字>"]
 }`;
 
 const DIMS_APPLIED = `{"name":"学科","score":0,"max":2,"reason":"<标题是否填了学科、开头是否点明哪一门>"},
