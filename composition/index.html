@@ -300,6 +300,26 @@
   </aside>
 </main>
 
+<!-- ============== 班级口令弹窗（首次进入输一次，之后记住） ============== -->
+<div class="modal" id="passModal" hidden>
+  <div class="modal-card modal-card-sm">
+    <div class="modal-head">
+      <h3>🔒 输入班级口令</h3>
+    </div>
+    <div class="modal-body">
+      <p class="hint" style="margin:0 0 10px;">口令由老师发给你，<b>只需要输入一次</b>，之后这台设备会记住。</p>
+      <div class="meta-field">
+        <label>班级口令</label>
+        <input type="text" id="passInput" placeholder="请输入班级口令" autocomplete="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="login-error" id="passError" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="btnPassOk" type="button">进 入</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============== 教师登录弹窗 ============== -->
 <div class="modal" id="loginModal" hidden>
   <div class="modal-card modal-card-sm">
@@ -447,6 +467,6 @@
 </footer>
 
 <!-- 业务脚本 -->
-<script src="assets/app.js?v=202611222330"></script>
+<script src="assets/app.js?v=202611221620"></script>
 </body>
 </html>

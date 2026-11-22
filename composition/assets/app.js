@@ -49,9 +49,8 @@ const state = {
  * ==================================================================== */
 const AUTH_KEY = 'composition_platform_session_v1';
 const STUDENT_PASS_KEY = 'composition_student_pass_v1';
-/* 免登录：平台自带的班级口令。口令只用于放行批改请求，
-   DashScope 的 Key 始终只在 Supabase Secrets 里，前端不出现。 */
-const CLASS_PASS = 'jiangxia2026';
+/* 班级口令：不写进代码，首次进入时由使用者输入一次并存本地。
+   口令只用于放行批改请求；DashScope 的 Key 始终只在 Supabase Secrets 里。 */
 const CONFIG_KEY = 'composition_platform_config_v1';
 
 /* 设置持久化：Key / 模式 / 模型选择存本机，刷新后不用重填。
@@ -115,6 +114,28 @@ function syncAuthUI() {
   }
   if (out) out.hidden = !u;
   if (chg) chg.hidden = !u;
+}
+
+/* 班级口令弹窗：首次进入输一次，之后存本地 */
+let pendingPassStep = 1;
+function openPass(step) {
+  pendingPassStep = step || 1;
+  const m = $('passModal');
+  if (!m) return;
+  $('passError').hidden = true;
+  const inp = $('passInput');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+  m.hidden = false;
+}
+function closePass() { const m = $('passModal'); if (m) m.hidden = true; }
+function submitPass() {
+  const v = ($('passInput').value || '').trim();
+  if (!v) { $('passError').hidden = false; $('passError').textContent = '请输入班级口令'; return; }
+  state.studentPass = v;
+  state.auth.student = true;
+  try { localStorage.setItem(STUDENT_PASS_KEY, v); } catch (e) {}
+  closePass();
+  goStep(pendingPassStep || 1);
 }
 
 function openLogin(step) {
@@ -208,9 +229,13 @@ function logout() {
 
 /* 令牌失效统一处理：清掉本地会话，弹出登录框 */
 function handleExpired(message) {
-  // 免登录模式：只提示，不弹登录框
-  if (state.auth.student && state.studentPass) {
-    flashToast('⚠️ ' + (message || '批改服务暂时不可用，请联系老师'));
+  // 免登录模式：口令失效就清掉本地口令，重新问一次
+  if (state.studentPass) {
+    state.studentPass = '';
+    state.auth.student = false;
+    try { localStorage.removeItem(STUDENT_PASS_KEY); } catch (e) {}
+    flashToast('⚠️ ' + (message || '口令无效或已更换，请重新输入'));
+    openPass(state.step >= 1 ? state.step : 1);
     return;
   }
   localStorage.removeItem(AUTH_KEY);
@@ -324,8 +349,12 @@ async function fetchWithRetry(url, options, attempts = 3, delays = [1200, 3000])
  * ==================================================================== */
 function goStep(n) {
   // 除落地页外都要求已登录；guest 仅允许看分享报告（第 3 步）
-  // 免登录：不再拦人。若口令失效，后端会返回 401，由 handleExpired 提示。
-  if (n >= 1 && state.studentPass) state.auth.student = true;
+  // 免登录，但要口令：没口令先弹口令框，不弹登录框
+  if (n >= 1 && !state.studentPass) {
+    openPass(n);
+    return;
+  }
+  if (n >= 1) state.auth.student = true;
   state.step = n;
   // 落地页时隐藏步骤指示器
   $('steps').classList.toggle('hidden-on-landing', n === 0);
@@ -1785,9 +1814,8 @@ window.cp = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 免登录：默认就带班级口令，老师和学生都不用登录
-  try { state.studentPass = localStorage.getItem(STUDENT_PASS_KEY) || CLASS_PASS; }
-  catch (e) { state.studentPass = CLASS_PASS; }
+  // 免登录：口令存在本地就直接用，没有就等用户首次进入时输一次
+  try { state.studentPass = localStorage.getItem(STUDENT_PASS_KEY) || ''; } catch (e) {}
   state.auth.student = !!state.studentPass;
   // 清掉历史遗留的教师会话，避免顶栏再显示某某老师
   try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
@@ -1797,6 +1825,12 @@ window.addEventListener('DOMContentLoaded', () => {
   syncAuthUI();
   refreshApiBadge();
   $('btnDoLogin').addEventListener('click', doLogin);
+
+  // 班级口令弹窗
+  const btnPassOk = $('btnPassOk');
+  if (btnPassOk) btnPassOk.addEventListener('click', submitPass);
+  const passInput = $('passInput');
+  if (passInput) passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPass(); });
 
   // 不上传图片，直接粘贴文本进第二步（测试 Key / 电子稿批改都用得上）
   const btnPasteText = $('btnPasteText');
