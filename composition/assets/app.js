@@ -542,8 +542,71 @@ async function edgeOcr(dataUrl) {
   return json.text;
 }
 
+/* 由前端统一结账：让大模型自己算总分靠不住（会出现「扣 2 分但总分没减」），
+   这里改成确定性计算——总分 = 五维之和 + 扣分，档位由总分反推，词数按正文实测。 */
+const TIER_TABLE = {
+  applied: [[13, 15, '第五档'], [10, 12, '第四档'], [7, 9, '第三档'], [4, 6, '第二档'], [0, 3, '第一档']],
+  continuation: [[21, 25, '第五档'], [16, 20, '第四档'], [11, 15, '第三档'], [6, 10, '第二档'], [0, 5, '第一档']]
+};
+
+/* 数词数：首行若明显是题目给的标题（≤12 词、无句末标点），不计入正文词数 */
+function countEssayWords(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return 0;
+  const lines = raw.split(/\n/).map((l) => l.trim()).filter(Boolean);
+  let body = raw;
+  if (lines.length > 1) {
+    const head = lines[0];
+    const headWords = (head.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+    if (headWords > 0 && headWords <= 12 && !/[.!?]$/.test(head)) {
+      body = lines.slice(1).join('\n');
+    }
+  }
+  return (body.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+}
+
+/* 词数规则（老师可改这一处）：应用文 80 左右 → 少于 60 或多于 100 扣 2 分 */
+const WORD_RULE = { min: 60, max: 100, penalty: -2 };
+
+function settleScore(s, content) {
+  const em = ESSAY_META[s.type] || ESSAY_META.applied;
+
+  // 维度分规整
+  s.dimensions = (s.dimensions || []).map((d) => {
+    const max = Number(d.max) || 0;
+    let v = Number(d.score);
+    if (!isFinite(v)) v = 0;
+    v = Math.max(0, Math.min(max || em.max, v));
+    return Object.assign({}, d, { score: v, max });
+  });
+  const dimSum = s.dimensions.reduce((a, d) => a + d.score, 0);
+
+  // 词数：以实测为准，应用文 <60 或 >100 扣 2 分（读后续写只做提示，不自动扣）
+  const wc = countEssayWords(content);
+  s.wordCount = wc;
+  s.deductions = (s.deductions || []).filter((d) => !/词数|字数|word\s*count/i.test(d.item || ''));
+  if (s.type === 'applied' && wc > 0 && (wc < WORD_RULE.min || wc > WORD_RULE.max)) {
+    s.deductions.push({
+      item: '词数 ' + wc + ' 词（要求 80 左右，少于 ' + WORD_RULE.min + ' 或多于 ' + WORD_RULE.max + ' 扣 2 分）',
+      points: WORD_RULE.penalty
+    });
+  }
+
+  const dedSum = s.deductions.reduce((a, d) => a + (Number(d.points) || 0), 0);
+  const total = Math.max(0, Math.min(em.max, Math.round(dimSum + dedSum)));
+  s.total = total;
+
+  const table = TIER_TABLE[s.type] || TIER_TABLE.applied;
+  const idx = table.findIndex((row) => total >= row[0] && total <= row[1]);
+  if (idx >= 0) {
+    s.tierIndex = 5 - idx;
+    s.tier = table[idx][2] + '（' + table[idx][0] + '-' + table[idx][1] + '分）';
+  }
+  return s;
+}
+
 /* 把后端 / 模型返回统一成前端渲染用的结构 */
-function normalizeScore(json, type) {
+function normalizeScore(json, type, content) {
   const t = (json.type || type || 'applied') === 'continuation' ? 'continuation' : 'applied';
   const em = ESSAY_META[t];
   const normIssues = (json.issues || []).map((it) => {
@@ -554,7 +617,7 @@ function normalizeScore(json, type) {
     if (typeof s === 'string') return { title: '建议', body: s, aiFix: '' };
     return { title: s.title || '建议', body: s.body || String(s), aiFix: s.aiFix || '' };
   });
-  return {
+  const norm = {
     type: t,
     maxScore: Number(json.maxScore) || em.max,
     total: Number(json.total) || 0,
@@ -570,6 +633,7 @@ function normalizeScore(json, type) {
     issues: normIssues,
     suggestions: normSuggestions
   };
+  return settleScore(norm, content);
 }
 
 async function edgeScore(title, content, question, type) {
@@ -585,7 +649,7 @@ async function edgeScore(title, content, question, type) {
   }
   if (!resp.ok) throw new Error('Edge Score ' + resp.status + '：' + (json.error || JSON.stringify(json).slice(0, 200)));
 
-  return normalizeScore(json, type);
+  return normalizeScore(json, type, content);
 }
 
 async function edgeTest() {
@@ -645,7 +709,7 @@ async function dashScore(title, content, question, type) {
   text = String(text).replace(/```json|```/g, '').trim();
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
   if (start === -1 || end === -1) throw new Error('评分 JSON 解析失败，原文: ' + text.slice(0, 300));
-  return normalizeScore(JSON.parse(text.slice(start, end + 1)), type);
+  return normalizeScore(JSON.parse(text.slice(start, end + 1)), type, content);
 }
 
 // 一键自检：验证 Key 是否有效（用 qwen-turbo 最快）
