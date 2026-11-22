@@ -1013,7 +1013,7 @@ function renderReport(score, meta, essayText, essayTitle) {
   const dimHtml = dims.length
     ? `
       <div class="report-section">
-        <h4>🎯 维度细评（满分 ${maxScore} 分的构成）</h4>
+        <h4>🎯 维度细评（${type === 'applied' ? '四项采分点 12 分 + 语言连贯 3 分' : '情节 / 语言 / 衔接 / 升华'}，合计满分 ${maxScore}）</h4>
         <div class="dim-grid">
           ${dims.map((d) => {
             const mx = Number(d.max || 0) || 1;
