@@ -49,6 +49,9 @@ const state = {
  * ==================================================================== */
 const AUTH_KEY = 'composition_platform_session_v1';
 const STUDENT_PASS_KEY = 'composition_student_pass_v1';
+/* 免登录：平台自带的班级口令。口令只用于放行批改请求，
+   DashScope 的 Key 始终只在 Supabase Secrets 里，前端不出现。 */
+const CLASS_PASS = 'jiangxia2026';
 const CONFIG_KEY = 'composition_platform_config_v1';
 
 /* 设置持久化：Key / 模式 / 模型选择存本机，刷新后不用重填。
@@ -205,6 +208,11 @@ function logout() {
 
 /* 令牌失效统一处理：清掉本地会话，弹出登录框 */
 function handleExpired(message) {
+  // 免登录模式：只提示，不弹登录框
+  if (state.auth.student && state.studentPass) {
+    flashToast('⚠️ ' + (message || '批改服务暂时不可用，请联系老师'));
+    return;
+  }
   localStorage.removeItem(AUTH_KEY);
   state.auth.user = null;
   state.auth.token = '';
@@ -316,10 +324,8 @@ async function fetchWithRetry(url, options, attempts = 3, delays = [1200, 3000])
  * ==================================================================== */
 function goStep(n) {
   // 除落地页外都要求已登录；guest 仅允许看分享报告（第 3 步）
-  if (n >= 1 && !state.auth.user && !state.auth.student && !(state.auth.guest && n === 3)) {
-    openLogin(n);
-    return;
-  }
+  // 免登录：不再拦人。若口令失效，后端会返回 401，由 handleExpired 提示。
+  if (n >= 1 && state.studentPass) state.auth.student = true;
   state.step = n;
   // 落地页时隐藏步骤指示器
   $('steps').classList.toggle('hidden-on-landing', n === 0);
@@ -1779,18 +1785,15 @@ window.cp = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 恢复学生班级口令（存本地，不入代码）
-  try { state.studentPass = localStorage.getItem(STUDENT_PASS_KEY) || ''; } catch (e) {}
+  // 免登录：默认就带班级口令，老师和学生都不用登录
+  try { state.studentPass = localStorage.getItem(STUDENT_PASS_KEY) || CLASS_PASS; }
+  catch (e) { state.studentPass = CLASS_PASS; }
+  state.auth.student = !!state.studentPass;
+  // 清掉历史遗留的教师会话，避免顶栏再显示某某老师
+  try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
   // 恢复上次保存的设置（Key / 模式 / 模型）
   loadConfig();
 
-  // 0. 恢复上次的登录状态（令牌 8 小时有效）+ 绑定登录弹窗
-  const session = readAuth();
-  if (session) {
-    state.auth.user = { account: session.account, name: session.name };
-    state.auth.token = session.token;
-    state.auth.exp = session.exp;
-  }
   syncAuthUI();
   refreshApiBadge();
   $('btnDoLogin').addEventListener('click', doLogin);
