@@ -28,7 +28,7 @@ const state = {
     edgeUrl: 'https://gqlwspxcyhjtzhikcexj.supabase.co/functions/v1',
     edgeAnonKey: 'sb_publishable_PqN5m9yOrWZzBazFjO7Y_w_pfIMO1PI', // 英语网站项目 publishable key（公开可放前端）
     edgeVerified: false,                               // 启动时 ping 函数验通
-    mode: 'mock'                                       // 首次打开先走 Mock（不耗额度）；部署好 Supabase 后在设置里切 edge
+    mode: 'edge'                                       // 默认走 Supabase 代理（Key 只在服务器）；后端不可用时自动回落 mock
   },
   auth: { user: null, token: '', exp: 0, guest: false, student: false },  // student = 学生自助（凭班级口令）
   studentPass: ''   // 学生班级口令（存 localStorage，仅用于放行）
