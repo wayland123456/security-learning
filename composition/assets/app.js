@@ -658,6 +658,23 @@ function trimPolish(list) {
   });
 }
 
+/* 提分文案统一成「+0.5 分」；同时给一个能算小数的取数函数
+   （旧代码用 /\d+/ 取数，把 0.5 截成 0，导致合计永远显示 +0 分） */
+function fmtGain(g) {
+  const raw = String(g == null ? '' : g).trim();
+  if (!raw) return '';
+  const m = raw.match(/\d+(?:\.\d+)?/);
+  if (!m) return raw;
+  if (Number(m[0]) <= 0) return '';
+  if (/\d\s*[~\-–]\s*\d/.test(raw)) return /^[+]/.test(raw) ? raw : '+' + raw;
+  return '+' + m[0] + ' 分';
+}
+
+function gainNum(g) {
+  const m = String(g == null ? '' : g).match(/\d+(?:\.\d+)?/);
+  return m ? Number(m[0]) : 0;
+}
+
 /* 把后端 / 模型返回统一成前端渲染用的结构 */
 function normalizeScore(json, type, content) {
   const t = (json.type || type || 'applied') === 'continuation' ? 'continuation' : 'applied';
@@ -681,7 +698,7 @@ function normalizeScore(json, type, content) {
     deductions: json.deductions || [],
     summary: json.summary || '',
     highlights: json.highlights || [],
-    polishExamples: trimPolish(json.polish_examples || json.polishExamples || []),
+    polishExamples: trimPolish(json.polish_examples || json.polishExamples || []).map((p) => Object.assign({}, p, { gain: fmtGain(p && p.gain) })),
     gainPlan: json.gain_plan || json.gainPlan || [],
     issues: normIssues,
     suggestions: normSuggestions
@@ -1061,9 +1078,13 @@ ${rubric}
 8. 只按【评分标准】里写明的采分点判分，不许自行发明题目没有要求的条件（例如额外要求"必须有独立标题""必须写身份句"）。找不到扣分依据就给分。
 
 【升格示范的难度红线（高中生看完要能直接抄去用）】
-· polish_examples 给 2–3 条即可，宁缺毋滥：只挑「语法有错」或「明显平铺罗列」的句子。
-  语法正确、意思清楚的句子（哪怕朴素）一律不许进清单——「不够华丽」不是毛病。
-  真找不到 2 条合格的，给 1 条也行，绝对不许为凑数去挑范文里本来没错的好句子。
+· polish_examples 条数按「错误多少」定，别一味少给：
+  - 错误较多（语言连贯只拿到 2 分或更低，或明显有 4 处以上错误）→ 给 4–5 条，
+    把不同类型的错误都覆盖到：主谓一致 / 时态 / 搭配 / 从句 / 语序 / 中式表达，让学生一次改干净；
+  - 错误不多、整体写得不错 → 给 2–3 条；
+  - 本身写得干净、挑不出硬伤 → 给 0 条（直接空数组 []），不许硬凑。
+· 只挑「语法有错」或「明显平铺罗列」的句子；语法正确、意思清楚的句子（哪怕朴素）一律不许进清单——
+  「不够华丽」不是毛病。宁可少一条，也绝不为凑数去挑范文里本来没错的好句子。
 · 长度：不超过原句的 1.3 倍。原句 20 词，升格就别超过 26 词，不许改成又长又绕的复合长句。
 · 结构：整句只加 1 个结构（一个定语从句 / 一个非谓语短语 / 一个倒装 / 一个强调句），不许层层嵌套。
 · 词汇：只用高考考纲 3500 词和人教版教材里出现过的词。禁止超纲词和书面生僻词
@@ -1299,11 +1320,18 @@ function renderReport(score, meta, essayText, essayTitle) {
 
   // ============== 升格示范 ==============
   const polish = score.polishExamples || score.polish_examples || [];
+  // 提分不能超过剩余空间：14 分的作文最多再提 1 分，不能把 4 个 +0.5 加起来写 +2 分
+  const gainRaw = Math.round(polish.reduce((s, p) => s + gainNum(p.gain), 0) * 10) / 10;
+  const headroom = Math.max(0, (Number(score.maxScore) || 15) - (Number(score.total) || 0));
+  const gainShown = Math.round(Math.min(gainRaw, headroom) * 10) / 10;
+  const gainLine = headroom <= 0 || gainShown <= 0
+    ? '已达满分档，这些改动是为了让表达更地道（不再加分）。'
+    : `改完预计提分 <b style="color:var(--accent);">+${gainShown} 分</b>（当前 ${score.total}/${score.maxScore || 15} 分）。`;
   const polishHtml = polish.length
     ? `
       <div class="report-section">
         <h4>✍ 原文升格示范（照着换就行）</h4>
-        <p class="hint" style="margin-bottom:14px;">从原文挑出最值得改的句子。<b style="color:var(--accent);">${polish.length}</b> 处范例，改完预计提分 <b style="color:var(--accent);">+${polish.reduce((s, p) => s + (Number(String(p.gain || '').match(/\d+/)?.[0]) || 0), 0)} 分</b>。</p>
+        <p class="hint" style="margin-bottom:14px;">从原文挑出最值得改的句子。<b style="color:var(--accent);">${polish.length}</b> 处范例，${gainLine}</p>
         <div class="polish-list">
           ${polish.map((p, idx) => `
             <div class="polish-card">
