@@ -406,22 +406,19 @@ function refreshGoStep2() {
  * ==================================================================== */
 const DEMO_DATA = {
   applied: {
-    title: '邀请信 · 邀请外教担任英语演讲比赛评委',
-    question: `假定你是李华，你校将举办英语演讲比赛。请你写一封邀请信，邀请外教 Chris 担任评委。内容包括：
-1. 比赛的时间和地点；
-2. 比赛的主题和参赛人数；
-3. 邀请他担任评委的理由。
-注意：1. 词数 80 左右；2. 可以适当增加细节，以使行文连贯。`,
-    essay: `Dear Chris,
+    title: '演讲稿 · AI-assisted learning benefits me most in ______',
+    question: `第一节（满分 15 分）
 
-I am Li Hua, chairman of the Student Union. I am writing to invite you to be a judge of our English speech contest.
+外教 Edward 要求同学们在课前演讲活动中，分享自己认为使用 AI 辅助学习受益最大的一门学科，并说明理由。请你以 "AI-assisted learning benefits me most in ______" 为题写一篇演讲稿。
 
-The contest will be held in the school hall at 2:00 p.m. on June 15th. Twenty students will take part in it and each of them will give a five-minute speech about "My Dream". As an experienced teacher, you have a good command of English and know well how to judge a speech. So we all think you are the best choice.
+注意：
+(1) 写作词数应为 80 左右；
+(2) 请按如下格式在答题卡的相应位置作答。
 
-I hope you can come and we are looking forward to your reply.
+AI-assisted learning benefits me most in ______`,
+    essay: `AI-assisted learning benefits me most in math
 
-Yours,
-Li Hua`
+Good morning, everyone! Today I'd like to share how AI helps me with math. Math used to be my weakest subject, and I often got stuck for hours. Now, whenever I am stuck, I turn to an AI tutor. It never gives me the answer directly. Instead, it asks me questions and leads me step by step until I work it out myself. Thanks to it, I have learned how to think, not just how to calculate. AI is truly a helpful learning partner. Thank you!`
   },
   continuation: {
     title: '读后续写 · 雨中寻回走失的小狗',
@@ -706,11 +703,10 @@ const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标
 · 空白卷 0 分
 
 【硬性扣分规则（必须执行，并在 deductions 中逐条列出）】
-1. 要点缺失：题目要求 3 个要点，缺 1 个扣 3–4 分；缺 2 个及以上 → 总分直接压到 6 分以下（不得判第四档及以上）
-2. 格式语域：书信无称呼或无落款、时态混用、语气与对象不符 → 扣 1–2 分
-3. 语言错误密度：主谓不一致、时态错乱、固定搭配错误、高频词拼写错误，累计每 3 处 → 降一档
-4. 词数：不足 60 词扣 2–3 分；不足 40 词直接判低档（≤6 分）
-5. 超字数不扣分，但超出的部分若有语言错误仍照常扣分
+1. 格式语域：书信无称呼或无落款、时态混用、语气与对象不符 → 扣 1–2 分
+2. 语言错误密度：主谓不一致、时态错乱、固定搭配错误、高频词拼写错误，累计每 3 处 → 降一档
+3. 词数：不足 60 词扣 2–3 分；不足 40 词直接判低档（≤6 分）
+4. 超字数不扣分，但超出的部分若有语言错误仍照常扣分
 
 【维度拆分（合计满分 15）】
 · 内容要点 6 分：三个要点是否齐全、具体到位
@@ -750,7 +746,7 @@ const RUBRIC_CONTINUATION = `【高考英语读后续写 25 分 · 五档评分�
 1. 情节断层 / 人物性格崩塌（人设与原文矛盾）/ 明显逻辑矛盾 → 直接降 2 档
 2. 只写一段，或两段严重失衡（一段明显过短）→ 扣 5–8 分
 3. 未接续所给段落开头语、或大段照抄原文 → 降档处理
-4. 词数：两段合计不足 100 词 → 直接降一档；150 词左右为佳，超出不扣分
+3. 词数：两段合计不足 100 词 → 直接降一档；150 词左右为佳，超出不扣分
 5. 时态混乱（叙事主体时态不一致，过去时与现在时随意切换）→ 降一档
 
 【冲满分三条件（给 21 分以上必须逐条说明是否满足）】
@@ -1707,7 +1703,7 @@ function updateTypeUI() {
   const s3 = $('step3Hint');
   if (s3) {
     s3.textContent = t === 'applied'
-      ? '应用文 15 分制 · 五档评分（13-15 / 10-12 / 7-9 / 4-6 / 0-3），含要点缺失扣分与语言错误降档规则。'
+      ? '应用文 15 分制 · 五档评分（13-15 / 10-12 / 7-9 / 4-6 / 0-3），含语言错误降档与词数限制规则。'
       : '读后续写 25 分制 · 五档评分（21-25 / 16-20 / 11-15 / 6-10 / 0-5），含情节断层降档、两段失衡扣分规则。';
   }
 }
