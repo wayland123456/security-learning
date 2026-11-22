@@ -601,8 +601,9 @@ function countEssayWords(text) {
   return (body.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
 }
 
-/* 词数规则（老师可改这一处）：应用文 80 左右 → 少于 60 或多于 120 扣 2 分 */
-const WORD_RULE = { min: 60, max: 120, penalty: -2 };
+/* 词数规则（老师可改这一处）：应用文 80 左右 → 只罚少、不罚多。
+   写多了说明有话可说，不再扣分（142 词也照常给分）。 */
+const WORD_RULE = { min: 60, penalty: -2 };
 
 function settleScore(s, content) {
   const em = ESSAY_META[s.type] || ESSAY_META.applied;
@@ -617,13 +618,13 @@ function settleScore(s, content) {
   });
   const dimSum = s.dimensions.reduce((a, d) => a + d.score, 0);
 
-  // 2. 词数：以实测为准（应用文 <60 或 >120 扣 2 分）
+  // 2. 词数：以实测为准（应用文只罚少不罚多：不足 60 词扣 2 分，写多了不扣）
   const wc = countEssayWords(content);
   s.wordCount = wc;
   s.deductions = (s.deductions || []).filter((d) => !/词数|字数|word\s*count/i.test(d.item || ''));
-  if (s.type === 'applied' && wc > 0 && (wc < WORD_RULE.min || wc > WORD_RULE.max)) {
+  if (s.type === 'applied' && wc > 0 && wc < WORD_RULE.min) {
     s.deductions.push({
-      item: '词数 ' + wc + ' 词（要求 80 左右，少于 ' + WORD_RULE.min + ' 或多于 ' + WORD_RULE.max + ' 扣 2 分）',
+      item: '词数 ' + wc + ' 词（要求 80 左右，不足 ' + WORD_RULE.min + ' 词扣 2 分）',
       points: WORD_RULE.penalty
     });
   }
@@ -864,17 +865,18 @@ const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标
 · 空白卷 0 分
 
 【硬性扣分规则（必须执行，并在 deductions 中逐条列出）】
-1. 词数：少于 60 词或多于 100 词 → 扣 2 分（本题 80 左右，70–100 都在安全区）
+1. 词数：少于 60 词 → 扣 2 分（本题 80 左右）；**写多了不扣分**，140 词也照常给分
 2. 书写：影响交际的降一个整档（是整档，不是扣一两分）
 3. 拼写与标点：按对交际的影响程度扣分；英美拼写均可，同篇不要混用
 4. 语言错误不单独扣分：主谓不一致、时态错乱、搭配错误、拼写错误一律通过压低「语言连贯」维度分体现，
    禁止再在 deductions 里重复扣一遍。
 
 【扣分与总分的算术（必须严格按此执行）】
-· deductions 只允许记录两类「维度分装不下」的硬性项：①词数不达标 ②书写影响交际
+· deductions 只允许记录两类「维度分装不下」的硬性项：①词数不足 60（写多了不算） ②书写影响交际
 · 语言、拼写、语法错误 → 只影响「语言连贯」维度分，不进 deductions
 · 总分 total = 五个维度分之和 + deductions 各项之和（deductions 为负，所以是相减）
-· 评分前必须先数词数：少于 60 词或多于 100 词，deductions 里必须出现 {"item":"词数","points":-2}
+· 评分前必须先数词数：不足 60 词才在 deductions 里记 {"item":"词数","points":-2}；
+  写多了（哪怕 140 词）一律不记扣分项，也不许因为「超字数」压低任何维度分
 
 【四项采分点 + 语言连贯（合计满分 15）】
 · ① 学科 2 分：标题或开头任意一处写出学科名（math / English / Chinese / physics…）→ 2 分；
@@ -1038,7 +1040,7 @@ ${rubric}
 3. 拿不准档次时，一律往下压一档 —— 给低了可以解释，给高了改不回来。
 4. 总分 = dimensions 五项之和 + deductions 各项之和（deductions 是负数）。
    语言/拼写/语法错误只压低「语言连贯」维度分，不许在 deductions 里重复记一笔；
-   deductions 只放词数不达标、书写影响交际这两类。算不通就重算。
+   deductions 只放「词数不足 60」和「书写影响交际」这两类。算不通就重算。
 5. 总分高于 ${m.high} 分时，tierReason 必须逐条说明为什么够高档，否则退回下一档。
 6. 引用原文必须真实存在，不许编造学生没写过的句子。
 7. 升格示范要给「换上就能用」的英语原句，不许写"可考虑使用更高级的词汇"这类空话。
