@@ -621,7 +621,9 @@ function settleScore(s, content) {
   // 2. 词数：以实测为准（应用文只罚少不罚多：不足 60 词扣 2 分，写多了不扣）
   const wc = countEssayWords(content);
   s.wordCount = wc;
-  s.deductions = (s.deductions || []).filter((d) => !/词数|字数|word\s*count/i.test(d.item || ''));
+  // 扣分明细只收「书写/卷面」一类硬性项。缺称呼、缺致谢、缺做法、受益空泛这些都体现在五维分里，
+  // 再记一笔就是重复扣分（曾出现「格式 0.5/2」又另扣「缺称呼 -1、缺致谢 -1」）。
+  s.deductions = (s.deductions || []).filter((d) => /书写|卷面|字迹|handwriting/i.test(String(d.item || '')));
   if (s.type === 'applied' && wc > 0 && wc < WORD_RULE.min) {
     s.deductions.push({
       item: '词数 ' + wc + ' 词（要求 80 左右，不足 ' + WORD_RULE.min + ' 词扣 2 分）',
@@ -874,6 +876,7 @@ const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标
 
 【扣分与总分的算术（必须严格按此执行）】
 · deductions 只允许记录两类「维度分装不下」的硬性项：①词数不足 60（写多了不算） ②书写影响交际
+  禁止记录：缺称呼 / 缺致谢 / 缺做法 / 受益空洞 / 格式不全 —— 这些是 ①—⑤ 维度分的事
 · 语言、拼写、语法错误 → 只影响「语言连贯」维度分，不进 deductions
 · 总分 total = 五个维度分之和 + deductions 各项之和（deductions 为负，所以是相减）
 · 评分前必须先数词数：不足 60 词才在 deductions 里记 {"item":"词数","points":-2}；
@@ -994,7 +997,7 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
     $DIMENSIONS
   ],
   "deductions": [
-    {"item": "<扣分项，如：缺④格式（没有致谢）>", "points": <负数，如 -2>}
+    {"item": "<只有两类：书写潦草影响交际 / 词数不足 60>", "points": <负数，如 -2>}
   ],
   "summary": "<一句话核心评价，30-60 字，给学生看的>",
   "highlights": ["<亮点1>", "<亮点2>", "<亮点3>"],
@@ -1071,6 +1074,8 @@ ${rubric}
 4. 总分 = dimensions 五项之和 + deductions 各项之和（deductions 是负数）。
    语言/拼写/语法错误只压低「语言连贯」维度分，不许在 deductions 里重复记一笔；
    deductions 只放「词数不足 60」和「书写影响交际」这两类。算不通就重算。
+   ★ 缺称呼、缺致谢、缺做法、受益空洞、格式不完整——一律不许进 deductions！
+     这些在 ①—⑤ 的维度分里已经扣过，再记一笔就是重复扣分（同一处错扣两遍）。
 5. 总分高于 ${m.high} 分时，tierReason 必须逐条说明为什么够高档，否则退回下一档。
 6. 引用原文必须真实存在，不许编造学生没写过的句子。
 7. 升格示范要给「换上就能用」的英语原句，不许写"可考虑使用更高级的词汇"这类空话。
