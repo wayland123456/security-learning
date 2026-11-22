@@ -495,7 +495,7 @@ function edgeAuth() {
 }
 
 async function edgeOcr(dataUrl) {
-  const resp = await fetchWithRetry(edgeBase() + '/ocr', {
+  const resp = await fetchWithRetry(edgeBase() + '/ocr-en', {
     method: 'POST',
     headers: edgeAuth(),
     body: JSON.stringify({ image: dataUrl })
@@ -541,7 +541,7 @@ function normalizeScore(json, type) {
 }
 
 async function edgeScore(title, content, question, type) {
-  const resp = await fetchWithRetry(edgeBase() + '/score', {
+  const resp = await fetchWithRetry(edgeBase() + '/score-en', {
     method: 'POST',
     headers: edgeAuth(),
     body: JSON.stringify({ title, content, question, essayType: type })
@@ -560,7 +560,7 @@ async function edgeTest() {
   // 用 OCR 函数发一张 1x1 透明 PNG，看返回
   const tinyPng =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-  const resp = await fetchWithRetry(edgeBase() + '/ocr', {
+  const resp = await fetchWithRetry(edgeBase() + '/ocr-en', {
     method: 'POST',
     headers: edgeAuth(),
     body: JSON.stringify({ image: tinyPng })
@@ -703,16 +703,18 @@ const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标
 · 空白卷 0 分
 
 【硬性扣分规则（必须执行，并在 deductions 中逐条列出）】
-1. 格式语域：书信无称呼或无落款、时态混用、语气与对象不符 → 扣 1–2 分
-2. 语言错误密度：主谓不一致、时态错乱、固定搭配错误、高频词拼写错误，累计每 3 处 → 降一档
-3. 词数：不足 60 词扣 2–3 分；不足 40 词直接判低档（≤6 分）
-4. 超字数不扣分，但超出的部分若有语言错误仍照常扣分
+1. 词数：少于 60 词或多于 100 词 → 扣 2 分（本题 80 左右，70–100 都在安全区）
+2. 书写：影响交际的降一个整档（是整档，不是扣一两分）
+3. 拼写与标点：按对交际的影响程度扣分；英美拼写均可，同篇不要混用
+4. 语言错误密度：主谓不一致、时态错乱、固定搭配错误、高频词拼写错误，累计每 3 处 → 降一档
 
-【维度拆分（合计满分 15）】
-· 内容要点 6 分：三个要点是否齐全、具体到位
-· 语言准确 5 分：词汇丰富度、语法正确率、句式多样性
-· 篇章连贯 2 分：连接词使用、句间段落逻辑
-· 格式语域 2 分：格式是否规范、语域是否得体`;
+【四项采分点 + 语言连贯（合计满分 15）】
+· ① 学科 2 分：标题填了学科、开头点明是哪一门；标题空着或通篇不说学科 → 0 分
+· ② 做法 4 分：要有一次具体经历——哪次、什么场景、AI 具体做了什么；通篇只写 useful / better / helpful → 最多 1 分
+· ③ 受益 4 分：原来怎样 → 现在怎样，要写出可验证的变化；只说「很有帮助」→ 最多 2 分
+· ④ 收束 2 分：称呼 + 致谢 + 一句留得住的话；写完就停笔、没有演讲意识 → 0–1 分
+· ⑤ 语言连贯 3 分：一处以上复杂句式、连接词得当、无影响理解的错误
+（本题是 AI 演讲稿。若换用书信、通知等题目，「学科」按「事由 / 身份」理解，「做法」按「具体安排」理解，「受益」按「目的达成」理解，五个维度名称和分值不变）`;
 
 const RUBRIC_CONTINUATION = `【高考英语读后续写 25 分 · 五档评分标准】
 
@@ -773,7 +775,7 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
     $DIMENSIONS
   ],
   "deductions": [
-    {"item": "<扣分项，如：缺少要点2（比赛主题）>", "points": <负数，如 -3>}
+    {"item": "<扣分项，如：缺④收束（没有致谢）>", "points": <负数，如 -2>}
   ],
   "summary": "<一句话核心评价，30-60 字，给学生看的>",
   "highlights": ["<亮点1>", "<亮点2>", "<亮点3>"],
@@ -795,10 +797,11 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
   "suggestions": ["<可操作短建议1>", "<建议2>", "<建议3>"]
 }`;
 
-const DIMS_APPLIED = `{"name":"内容要点","score":0,"max":6,"reason":"<三个要点各自覆盖情况>"},
-    {"name":"语言准确","score":0,"max":5,"reason":"<词汇/语法/句式的具体表现>"},
-    {"name":"篇章连贯","score":0,"max":2,"reason":"<衔接手段与逻辑>"},
-    {"name":"格式语域","score":0,"max":2,"reason":"<格式与语域是否得体>"}`;
+const DIMS_APPLIED = `{"name":"学科","score":0,"max":2,"reason":"<标题是否填了学科、开头是否点明哪一门>"},
+    {"name":"做法","score":0,"max":4,"reason":"<有没有一次具体经历：哪次、什么场景、AI 具体做了什么>"},
+    {"name":"受益","score":0,"max":4,"reason":"<原来怎样→现在怎样，变化是否可验证>"},
+    {"name":"收束","score":0,"max":2,"reason":"<称呼、致谢、收尾金句与演讲意识>"},
+    {"name":"语言连贯","score":0,"max":3,"reason":"<复杂句式有无、连接词是否得当、有无影响理解的错误>"}`;
 
 const DIMS_CONTINUATION = `{"name":"情节逻辑","score":0,"max":8,"reason":"<与原文衔接、情节合理性>"},
     {"name":"语言表达","score":0,"max":8,"reason":"<词汇与句式，指出高级结构有无>"},
@@ -877,59 +880,63 @@ const MOCK_SCORES = {
   applied: {
     type: 'applied',
     maxScore: 15,
-    tier: '第四档（10-12分）',
-    tierIndex: 4,
-    total: 12,
-    tierReason: '三个要点基本齐全：时间地点、主题与人数、邀请理由都已写到，格式完整、行文连贯，故判第四档。但要点二的细节扩充不足（未说明比赛形式、时长或奖项），语言以简单句为主、缺高级结构，未达到第五档要求的「词汇语法多样、有适当细节扩展」，因此不进第五档；相比第三档，本文要点无明显遗漏、三段结构清晰，故也不下压至第三档。',
+    tier: '第五档（13-15分）',
+    tierIndex: 5,
+    total: 13,
+    tierReason: '四项采分点全部落地：标题与首句双重点明学科（math），做法写出了「卡住→问 AI→它反问→我自己解出来」的完整过程，受益落到了「学会思考而不只是会算」这一层，收尾有称呼、致谢与一句留得住的话，语言连贯，故判第五档。为什么不是第四档：本文不只是罗列 AI 好用，而是有可复述的过程与可验证的变化，符合第五档「覆盖全部要点、表达清楚合理」的要求。为什么不到 14–15 分：做法仍是「每当我卡住」的常态描述，缺一次具体到「哪次作业、哪道题」的经历；高级结构只有 whenever 与 until 两处从句，未达到第五档所要求的「较多复杂高级语法」。',
     dimensions: [
-      { name: '内容要点', score: 5, max: 6, reason: '要点1（时间地点：school hall, 2:00 p.m., June 15th）明确；要点2（主题 My Dream、20 人参赛）到位但缺细节；要点3（理由是经验丰富的英语教师）稍笼统。' },
-      { name: '语言准确', score: 4, max: 5, reason: '整体可读、用词基本准确，但句式以简单句为主，仅一处 as 引导的状语；"know well how to" 搭配不地道，缺非谓语与定语从句等高级结构。' },
-      { name: '篇章连贯', score: 2, max: 2, reason: '三段式清晰，使用 As / So / and 衔接，逻辑顺畅。' },
-      { name: '格式语域', score: 2, max: 2, reason: '有称呼 Dear Chris 与落款 Yours, Li Hua，格式完整，语气礼貌得体。' }
+      { name: '学科', score: 2, max: 2, reason: '标题直接填了 math，首句 "how AI helps me with math" 再点一次，学科信息两处明确，满分。' },
+      { name: '做法', score: 3, max: 4, reason: '写出了完整过程：stuck → turn to an AI tutor → it asks me questions → leads me step by step → I work it out myself，具体且可信。扣 1 分的原因：以 "whenever I am stuck" 起头是常态描述，缺一次「哪次、什么场景」的具体经历。' },
+      { name: '受益', score: 4, max: 4, reason: '"Math used to be my weakest subject, and I often got stuck for hours" 交代原来；"I have learned how to think, not just how to calculate" 交代现在，前后变化清晰且落在思维方式上，超出「提分」这一层，满分。' },
+      { name: '收束', score: 2, max: 2, reason: 'Good morning, everyone 有称呼，Today I would like to share 有演讲引入，Thank you! 有致谢，中间 "AI is truly a helpful learning partner" 是一句能被记住的话，演讲意识完整。' },
+      { name: '语言连贯', score: 2, max: 3, reason: '连接手段自然（Now / Instead / Thanks to it），有 whenever 与 until 两处从句，无影响理解的错误。扣 1 分：全文以简单句为主，无非谓语、定语从句、倒装等高级结构，句式层次偏平。' }
     ],
-    deductions: [
-      { item: '要点2 细节不足（未交代比赛形式、时长或奖项），酌情扣 1 分', points: -1 }
+    deductions: [],
+    summary: '采分点齐全的一篇演讲稿：学科点得明，做法有过程，受益写出了思维方式的变化，只在「具体到哪一次」和高级句式上还差一口气。',
+    highlights: [
+      '标题与首句双重点明学科，学科分拿满',
+      '受益写到「学会思考而不只是会算」，比只说提分高一档',
+      '有称呼、有致谢，演讲意识完整'
     ],
-    summary: '一封要点齐全、格式完整的邀请信，语言达意但句式偏简单，细节扩充不足，属中等偏上水平。',
-    highlights: ['三个要点均有覆盖', '三段式结构清晰', '语气礼貌得体'],
     polishExamples: [
       {
-        original: 'As an experienced teacher, you have a good command of English and know well how to judge a speech.',
-        issue: '句式单一，"know well how to" 搭配不地道',
-        polished: 'As an experienced teacher with a good command of English, you are the very person who knows exactly what makes a speech impressive. （用 with 短语替代从句，加 the very person who 强调句，语气更诚恳有力）',
-        technique: 'with 复合结构 + 强调表达',
+        original: 'Math used to be my weakest subject, and I often got stuck for hours.',
+        issue: '「原来」交代得偏平，缺画面感',
+        polished: 'Math used to be the subject I dreaded most, and a single problem could trap me at my desk for hours. （the subject I dreaded most 定语从句替代 weakest，trap me at my desk 给具体场景，为后文「变化」做反差）',
+        technique: '定语从句 + 具体化动词',
         gain: '+1 分'
       },
       {
-        original: 'Twenty students will take part in it and each of them will give a five-minute speech about "My Dream".',
-        issue: '信息平铺，缺少比赛细节与吸引力',
-        polished: 'Twenty students will compete, each delivering a five-minute speech on "My Dream", after which three winners will be awarded. （加入非谓语 each delivering 与定语从句 after which，补充奖项细节）',
-        technique: '独立主格 + 定语从句',
+        original: 'It never gives me the answer directly. Instead, it asks me questions and leads me step by step until I work it out myself.',
+        issue: '两个短句可合并，句式偏碎',
+        polished: 'Instead of handing me the answer, it fires questions at me, nudging me forward one step at a time until the solution clicks. （Instead of 介词短语 + 分词状语 nudging，把两个短句并成一句，节奏更紧）',
+        technique: '介词短语 + 现在分词作状语',
         gain: '+1~2 分'
       },
       {
-        original: 'I hope you can come and we are looking forward to your reply.',
-        issue: '结尾套话化，未强化邀请诚意',
-        polished: 'Your presence would mean a great deal to us, and I would be grateful if you could spare the time. （用 would 委婉表达 + 条件句，提升语域）',
-        technique: '虚拟语气 + 条件状语从句',
+        original: 'AI is truly a helpful learning partner.',
+        issue: '收尾句是泛词堆砌，留不住',
+        polished: 'AI is not a crutch that carries me, but a partner that teaches me to stand on my own. （not...but 对举 + 两个定语从句，把「受益」再抬一层）',
+        technique: 'not...but 对举 + 定语从句',
         gain: '+1 分'
       }
     ],
     gainPlan: [
-      { step: 1, task: '把落款改成 "Yours sincerely, Li Hua"，补齐格式分', expected: '+1 分', difficulty: '简单' },
-      { step: 2, task: '在要点二补一个细节：如设一二三等奖、比赛时长 2 小时', expected: '+1 分', difficulty: '简单' },
-      { step: 3, task: '把三个简单句改写为含非谓语或定语从句的复合句（至少 2 处）', expected: '+1~2 分', difficulty: '中等' },
-      { step: 4, task: '用虚拟语气改写结尾邀请句，增强诚意与语域', expected: '+1 分', difficulty: '中等' }
+      { step: 1, task: '把「做法」补成一次具体经历：哪次作业、哪道题、AI 当时反问了你什么', expected: '+1 分', difficulty: '中等' },
+      { step: 2, task: '把结尾句换成 not...but 对举句，替掉 helpful learning partner', expected: '+1 分', difficulty: '简单' },
+      { step: 3, task: '至少加一处非谓语作状语或定语从句，把简单句合并', expected: '+1 分', difficulty: '中等' },
+      { step: 4, task: '受益部分补一个可验证的细节（如月考从多少分到多少分、能独立做完哪类题）', expected: '+0.5~1 分', difficulty: '中等' }
     ],
     issues: [
-      { title: '句式单一，缺少高级结构', body: '全文 10 句中有 8 句是「主语 + 谓语 + 宾语」的简单句，没有非谓语、定语从句或倒装，直接限制了语言分上限。', gain: '+2 分' },
-      { title: '要点二细节不足', body: '"Twenty students will take part in it" 只交代人数，未说明比赛形式、时长或奖项，显得单薄。', gain: '+1 分' },
-      { title: '个别搭配不地道', body: '"know well how to judge a speech" 应为 "know exactly how to judge a speech"；"take part in it" 中 it 指代不够清晰。', gain: '+1 分' }
+      { title: '「做法」停在常态，缺一次具体经历', body: '"whenever I am stuck, I turn to an AI tutor" 说的是习惯，不是经历。阅卷老师看不到「哪一次、什么题、AI 具体怎么问」，做法分只能给到 3 分。', gain: '+1 分' },
+      { title: '「受益」的可验证性还可以再落一层', body: '"learned how to think" 已经比多数同学高，但仍停在自我评价，没有分数、题型或具体能力作证据。', gain: '+0.5~1 分' },
+      { title: '句式层次偏平', body: '全文 8 句中有 5 句是简单句，只有 whenever 与 until 两处从句，没有非谓语或倒装，语言连贯分被压在 2 分。', gain: '+1 分' }
     ],
     suggestions: [
-      '每段至少安排一个复合句，优先练非谓语作状语与定语从句',
-      '邀请信固定三段：自我介绍+写信目的 / 具体安排 / 期待回复',
-      '落款统一 "Yours sincerely, Li Hua"，不要只写 Yours'
+      '「做法」栏位一定要写「一次」：哪次作业、哪道题、AI 具体做了什么',
+      '「受益」栏位写变化：原来卡多久、现在能自己走到哪一步',
+      '收尾别用 helpful / useful / good 这类泛词，换一句能被记住的话',
+      '时间够就把两个短句合成一个带分词或从句的长句，一篇有两处就够'
     ]
   },
   continuation: {
