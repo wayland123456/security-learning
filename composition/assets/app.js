@@ -827,17 +827,17 @@ async function ocrRecognize(type) {
 const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标准】
 
 【第五档 13–15 分】四项采分点全部落地
-· 学科点明 + 做法 ≥2 个具体用法 + 受益有方向且有一句说明 + 收束三项齐
+· 学科点明 + 做法 ≥2 个具体用法 + 受益有方向且有一句说明 + 格式与收尾三项齐
 · 表达清楚：错误存在但读得懂、不打断意思；格式规范、语域得体
 · ▲ 只要四项齐全且能读懂，就进第五档。不许拿「没具体到哪次作业」「有 3–5 处搭配错误」当理由往下压档
 
 【第四档 10–12 分】四项采分点缺 1 项
-· 例：受益只写「有帮助」、收束缺收尾句、做法只剩 1 个、学科只在正文中间顺带提
+· 例：受益只写「有帮助」、格式与收尾缺收尾句、做法只剩 1 个、学科只在正文中间顺带提
 · 或四项齐全但错误多到要回读才能看懂
 · 格式基本正确，连贯性较好
 
 【第三档 7–9 分】缺 2 项采分点
-· 例：做法只有空话 + 受益只有一句评价；或收束只剩寒暄
+· 例：做法只有空话 + 受益只有一句评价；或格式与收尾只剩寒暄
 · 语言错误较多，但基本能表达意思
 · 格式有缺漏，连贯性一般
 
@@ -881,11 +881,11 @@ const RUBRIC_APPLIED = `【高考英语应用文写作 15 分 · 五档评分标
     2 分 = 只有「有帮助 / 有提高 / 很重要」这类笼统评价
     1 分 = 只在结尾一笔带过，几乎看不出受益
     0 分 = 没写受益
-· ④ 收束 2 分：**只判「有没有、齐不齐」，不判语法**。
+· ④ 格式与收尾 2 分：**只判「有没有、齐不齐」，不判语法**。
     2 分 = 称呼（Hello everyone / Dear classmates）+ 致谢（Thank you）+ 一句收尾，三项内容上都能辨认
     1 分 = 三项缺一项（真的没有收尾句，戛然而止在正文）
     0.5 分 = 只剩称呼 + 致谢，没有任何收尾句
-    0 分 = 完全没有演讲收束
+    0 分 = 称呼、致谢、收尾句全都没有
     ▲ 收尾句有语法错误照样给 2 分。例："That what all I want to share with." 一眼能看出是
       "That is all I want to share with you."——这就是收尾句，给 2 分，错误留给 ⑤ 扣。
     ▲ 判「缺一项」之前必须先试着理解学生想写什么：意思能猜到就算落地，不许因为写得不标准就算没有。
@@ -904,12 +904,12 @@ it saves me a lot of time. Besides, I can ask AI to explain the sentences I can'
 All in all, AI plays an important role in my English learning. That's all I want to share with you.
 Thank you for your listening."
 判分：学科 2（标题填了 English）+ 做法 4（查词发音、解释难句，两个具体用法）+ 受益 4（省时，
-并用"不用翻书"说明了省在哪）+ 收束 2（称呼 / 收尾 / 致谢三项齐）+ 语言连贯 2（简单句为主、
+并用"不用翻书"说明了省在哪）+ 格式与收尾 2（称呼 / 收尾 / 致谢三项齐）+ 语言连贯 2（简单句为主、
 有几处搭配错误但全文读得懂）= 14 分，第五档。
 
 ▲ 这就是 13–15 分的典型样子：要点齐全、能读懂，语言只是"不够漂亮"。
   凡是达到这个水平的作文，一律 13 分以上；不许因为"全是简单句""有三五处搭配错"就压到 10–12。
-▲ 反过来，只有真正缺采分点（比如完全没写受益、收束戛然而止）或整段读不懂，才进第四档以下。
+▲ 反过来，只有真正缺采分点（比如完全没写受益、结尾戛然而止）或整段读不懂，才进第四档以下。
 
 【区分度要求（重要）】
 · 维度分可以给 0.5 分的刻度（如 1.5 / 2.5），不要一律压在整数上
@@ -977,7 +977,7 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
     $DIMENSIONS
   ],
   "deductions": [
-    {"item": "<扣分项，如：缺④收束（没有致谢）>", "points": <负数，如 -2>}
+    {"item": "<扣分项，如：缺④格式与收尾（没有致谢）>", "points": <负数，如 -2>}
   ],
   "summary": "<一句话核心评价，30-60 字，给学生看的>",
   "highlights": ["<亮点1>", "<亮点2>", "<亮点3>"],
@@ -1002,7 +1002,7 @@ const SCHEMA_BLOCK = `【输出 JSON 格式】（只输出一个 JSON 对象，�
 const DIMS_APPLIED = `{"name":"学科","score":0,"max":2,"reason":"<标题是否填了学科、开头是否点明哪一门>"},
     {"name":"做法","score":0,"max":4,"reason":"<写出几个具体做法、每个说清用 AI 干什么>"},
     {"name":"受益","score":0,"max":4,"reason":"<受益方向是什么（省时/提分/敢开口）、有没有一句说明>"},
-    {"name":"收束","score":0,"max":2,"reason":"<称呼+致谢+收尾三项齐不齐（不判语法）>"},
+    {"name":"格式与收尾","score":0,"max":2,"reason":"<称呼+致谢+收尾三项齐不齐（不判语法）>"},
     {"name":"语言连贯","score":0,"max":3,"reason":"<复杂句式有无、连接词是否得当、有无影响理解的错误>"}`;
 
 const DIMS_CONTINUATION = `{"name":"情节逻辑","score":0,"max":8,"reason":"<与原文衔接、情节合理性>"},
@@ -1128,7 +1128,7 @@ const MOCK_SCORES = {
       { name: '学科', score: 2, max: 2, reason: '标题直接填了 math，首句 "how AI helps me with math" 再点一次，学科信息两处明确，满分。' },
       { name: '做法', score: 3, max: 4, reason: '写出了完整过程：stuck → turn to an AI tutor → it asks me questions → leads me step by step → I work it out myself，具体且可信。扣 1 分的原因：以 "whenever I am stuck" 起头是常态描述，缺一次「哪次、什么场景」的具体经历。' },
       { name: '受益', score: 4, max: 4, reason: '"Math used to be my weakest subject, and I often got stuck for hours" 交代原来；"I have learned how to think, not just how to calculate" 交代现在，前后变化清晰且落在思维方式上，超出「提分」这一层，满分。' },
-      { name: '收束', score: 2, max: 2, reason: 'Good morning, everyone 有称呼，Today I would like to share 有演讲引入，Thank you! 有致谢，中间 "AI is truly a helpful learning partner" 是一句能被记住的话，演讲意识完整。' },
+      { name: '格式与收尾', score: 2, max: 2, reason: 'Good morning, everyone 有称呼，Today I would like to share 有演讲引入，Thank you! 有致谢，中间 "AI is truly a helpful learning partner" 是一句能被记住的话，演讲意识完整。' },
       { name: '语言连贯', score: 2, max: 3, reason: '连接手段自然（Now / Instead / Thanks to it），有 whenever 与 until 两处从句，无影响理解的错误。扣 1 分：全文以简单句为主，无非谓语、定语从句、倒装等高级结构，句式层次偏平。' }
     ],
     deductions: [],
