@@ -571,17 +571,17 @@ const WORD_RULE = { min: 60, max: 120, penalty: -2 };
 function settleScore(s, content) {
   const em = ESSAY_META[s.type] || ESSAY_META.applied;
 
-  // 维度分规整
+  // 1. 维度分规整（允许 0.5 刻度）
   s.dimensions = (s.dimensions || []).map((d) => {
     const max = Number(d.max) || 0;
     let v = Number(d.score);
     if (!isFinite(v)) v = 0;
     v = Math.max(0, Math.min(max || em.max, v));
-    return Object.assign({}, d, { score: v, max });
+    return Object.assign({}, d, { score: Math.round(v * 2) / 2, max });
   });
   const dimSum = s.dimensions.reduce((a, d) => a + d.score, 0);
 
-  // 词数：以实测为准，应用文 <60 或 >100 扣 2 分（读后续写只做提示，不自动扣）
+  // 2. 词数：以实测为准（应用文 <60 或 >120 扣 2 分）
   const wc = countEssayWords(content);
   s.wordCount = wc;
   s.deductions = (s.deductions || []).filter((d) => !/词数|字数|word\s*count/i.test(d.item || ''));
@@ -591,17 +591,46 @@ function settleScore(s, content) {
       points: WORD_RULE.penalty
     });
   }
-
   const dedSum = s.deductions.reduce((a, d) => a + (Number(d.points) || 0), 0);
-  const total = Math.max(0, Math.min(em.max, Math.round(dimSum + dedSum)));
-  s.total = total;
 
+  // 3. 先定档：模型给的档位优先，没给就按分数猜
   const table = TIER_TABLE[s.type] || TIER_TABLE.applied;
-  const idx = table.findIndex((row) => total >= row[0] && total <= row[1]);
-  if (idx >= 0) {
-    s.tierIndex = 5 - idx;
-    s.tier = table[idx][2] + '（' + table[idx][0] + '-' + table[idx][1] + '分）';
+  let idx = Number(s.tierIndex) || 0;
+  let row = (idx >= 1 && idx <= 5) ? table[5 - idx] : null;
+  if (!row) {
+    const guess = Math.max(0, table.findIndex((r) => dimSum + dedSum >= r[0] && dimSum + dedSum <= r[1]));
+    row = table[guess];
+    idx = 5 - guess;
   }
+
+  // 4. 档内定分：总分必须落在这个档的区间内
+  let target = Number(s.total);
+  if (!isFinite(target) || target <= 0) target = dimSum + dedSum;
+  target = Math.max(row[0], Math.min(row[1], Math.round(target * 2) / 2));
+
+  // 5. 档内配平：维度之和 = 总分 - 扣分
+  const need = Math.round((target - dedSum) * 2) / 2;
+  if (dimSum > 0.01 && Math.abs(need - dimSum) > 0.01) {
+    const k = need / dimSum;
+    s.dimensions = s.dimensions.map((d) => Object.assign({}, d, {
+      score: Math.max(0, Math.min(d.max, Math.round(d.score * k * 2) / 2))
+    }));
+    const cur = s.dimensions.reduce((a, d) => a + d.score, 0);
+    const diff = Math.round((need - cur) * 2) / 2;
+    if (Math.abs(diff) >= 0.5) {
+      let best = null, room = -1;
+      s.dimensions.forEach((d) => {
+        const r = diff > 0 ? d.max - d.score : d.score;
+        if (r > room) { room = r; best = d; }
+      });
+      if (best) best.score = Math.max(0, Math.min(best.max, best.score + diff));
+    }
+  }
+
+  s.total = Math.max(0, Math.min(em.max, target));
+  s.tierIndex = idx;
+  s.tier = row[2] + '（' + row[0] + '-' + row[1] + '分）';
+  s.tierBand = row[0] + '-' + row[1];
   return s;
 }
 
@@ -956,6 +985,14 @@ function buildPrompt(type, title, content, question) {
 ${rubric}
 
 【给分纪律（比标准本身更重要，必须遵守）】
+0. 判分分两步，顺序不能反，也不许边算维度边定档：
+   第一步【先定档】：先只读整体，不看任何维度分——对照五档描述判断这篇整体处在第几档，
+     在 tierReason 里写清三条依据，以及「为什么不是上一档」「为什么不是下一档」；
+   第二步【档内打分】：在该档的分数区间内定出总分 total（例如判第四档就只能在 10/11/12 里选），
+     档内定位用「低段 / 中段 / 高段」三分法，并在 tierReason 里明说落在低段还是高段；
+     两篇确有差距时必须落在不同位置，不许一律取区间中点；
+     再把 total 拆成五个维度分——dimensions 各项之和必须正好等于 total，
+     差 0.5 就调其中一项，不许出现「维度加起来跟总分对不上」。
 1. 先把学生原文完整读一遍（含拼写、标点、分段），再动笔评分，不许边看边猜。
 2. 五档是硬边界：只能给档内的分数，档内最多 ±1 分浮动，绝对不许跨档给分。
    例如应用文判第四档（10-12），就只能给 10/11/12 分，不能给 13 分。
@@ -1137,7 +1174,7 @@ function renderReport(score, meta, essayText, essayTitle) {
   const dimHtml = dims.length
     ? `
       <div class="report-section">
-        <h4>🎯 维度细评（${type === 'applied' ? '四项采分点 12 分 + 语言连贯 3 分' : '情节 / 语言 / 衔接 / 升华'}，合计满分 ${maxScore}）</h4>
+        <h4>② 档内打分 · 在「${escapeHtml(score.tier || '本档')}」区间里拆解，五维合计 ${total} 分</h4>
         <div class="dim-grid">
           ${dims.map((d) => {
             const mx = Number(d.max || 0) || 1;
@@ -1163,7 +1200,7 @@ function renderReport(score, meta, essayText, essayTitle) {
   const dedHtml = deds.length
     ? `
       <div class="report-section">
-        <h4>➖ 扣分明细（合计 ${totalDeduct} 分）</h4>
+        <h4>③ ➖ 扣分明细（合计 ${totalDeduct} 分）</h4>
         <div class="deduct-list">
           ${deds.map((d) => `
             <div class="deduct-row">
@@ -1176,7 +1213,7 @@ function renderReport(score, meta, essayText, essayTitle) {
     `
     : `
       <div class="report-section">
-        <h4>➖ 扣分明细</h4>
+        <h4>③ ➖ 扣分明细</h4>
         <p class="hint">无硬性扣分项。</p>
       </div>
     `;
@@ -1294,7 +1331,7 @@ function renderReport(score, meta, essayText, essayTitle) {
       <div class="score-breakdown">
         <div class="score-row basic">
           <div>
-            <div class="name">档位判定依据</div>
+            <div class="name">① 先定档 · 整体判定依据</div>
             <div class="reason">${escapeHtml(score.tierReason || '—')}</div>
           </div>
         </div>
@@ -1404,14 +1441,14 @@ async function downloadWord() {
   }));
 
   // 一、档位判定依据
-  children.push(new Paragraph({ text: '一、档位判定依据', heading: HeadingLevel.HEADING_2, spacing: { after: 100 } }));
+  children.push(new Paragraph({ text: '一、先定档（整体判定）', heading: HeadingLevel.HEADING_2, spacing: { after: 100 } }));
   children.push(new Paragraph({
     children: [new TextRun({ text: score.tierReason || '—', size: 22 })],
     spacing: { after: 200 }
   }));
 
   // 二、维度细评
-  children.push(new Paragraph({ text: '二、维度细评', heading: HeadingLevel.HEADING_2, spacing: { after: 100, before: 200 } }));
+  children.push(new Paragraph({ text: '二、档内打分（五维拆解）', heading: HeadingLevel.HEADING_2, spacing: { after: 100, before: 200 } }));
   (score.dimensions || score.dimensionScores || []).forEach((d) => {
     children.push(new Paragraph({
       children: [
