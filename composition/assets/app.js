@@ -49,8 +49,9 @@ const state = {
  * ==================================================================== */
 const AUTH_KEY = 'composition_platform_session_v1';
 const STUDENT_PASS_KEY = 'composition_student_pass_v1';
-/* 班级口令：不写进代码，首次进入时由使用者输入一次并存本地。
-   口令只用于放行批改请求；DashScope 的 Key 始终只在 Supabase Secrets 里。 */
+/* 放行口令：与英语学习网站 ai-proxy 同一套思路——公开值，只用来挡掉裸奔请求。
+   它不等于 DashScope Key，Key 始终只在 Supabase Secrets 里，前端永远拿不到。 */
+const CLASS_PASS = 'jiangxia2026';
 const CONFIG_KEY = 'composition_platform_config_v1';
 
 /* 设置持久化：Key / 模式 / 模型选择存本机，刷新后不用重填。
@@ -229,13 +230,10 @@ function logout() {
 
 /* 令牌失效统一处理：清掉本地会话，弹出登录框 */
 function handleExpired(message) {
-  // 免登录模式：口令失效就清掉本地口令，重新问一次
-  if (state.studentPass) {
-    state.studentPass = '';
-    state.auth.student = false;
-    try { localStorage.removeItem(STUDENT_PASS_KEY); } catch (e) {}
-    flashToast('⚠️ ' + (message || '口令无效或已更换，请重新输入'));
-    openPass(state.step >= 1 ? state.step : 1);
+  // 开放模式：只提示，不弹框
+  if (state.auth.student) {
+    state.studentPass = CLASS_PASS;
+    flashToast('⚠️ ' + (message || '批改服务暂时不可用，请稍后再试'));
     return;
   }
   localStorage.removeItem(AUTH_KEY);
@@ -349,12 +347,11 @@ async function fetchWithRetry(url, options, attempts = 3, delays = [1200, 3000])
  * ==================================================================== */
 function goStep(n) {
   // 除落地页外都要求已登录；guest 仅允许看分享报告（第 3 步）
-  // 免登录，但要口令：没口令先弹口令框，不弹登录框
-  if (n >= 1 && !state.studentPass) {
-    openPass(n);
-    return;
+  // 完全开放：不拦登录、不拦口令
+  if (n >= 1) {
+    state.auth.student = true;
+    if (!state.studentPass) state.studentPass = CLASS_PASS;
   }
-  if (n >= 1) state.auth.student = true;
   state.step = n;
   // 落地页时隐藏步骤指示器
   $('steps').classList.toggle('hidden-on-landing', n === 0);
@@ -1814,9 +1811,10 @@ window.cp = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  // 免登录：口令存在本地就直接用，没有就等用户首次进入时输一次
-  try { state.studentPass = localStorage.getItem(STUDENT_PASS_KEY) || ''; } catch (e) {}
-  state.auth.student = !!state.studentPass;
+  // 免登录、免口令：直接放行（和英语学习网站的作文评分一样，打开就能用）
+  state.studentPass = CLASS_PASS;
+  try { localStorage.removeItem(STUDENT_PASS_KEY); } catch (e) {}
+  state.auth.student = true;
   // 清掉历史遗留的教师会话，避免顶栏再显示某某老师
   try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
   // 恢复上次保存的设置（Key / 模式 / 模型）
