@@ -67,7 +67,11 @@ function loadConfig() {
   if (o.edgeUrl) state.config.edgeUrl = o.edgeUrl;
   if (o.edgeAnonKey) state.config.edgeAnonKey = o.edgeAnonKey;
   if (o.cozeUrl) state.config.cozeUrl = o.cozeUrl;
-  if (o.mode) state.config.mode = o.mode;
+  // mock 只当兜底，不作为长期选择粘住：只要 edge 凭据齐全就自动用真实评分
+  if (o.mode && o.mode !== 'mock') state.config.mode = o.mode;
+  if (state.config.mode === 'mock' && state.config.edgeUrl && state.config.edgeAnonKey) {
+    state.config.mode = 'edge';
+  }
   // 防呆：模式需要的凭据缺失就回落 Mock，免得一打开就报错
   if (state.config.mode === 'live' && !state.config.dashKey) state.config.mode = 'mock';
   if (state.config.mode === 'edge' && (!state.config.edgeUrl || !state.config.edgeAnonKey)) state.config.mode = 'mock';
@@ -369,6 +373,38 @@ function goStep(n) {
 /* ====================================================================
  * 图片上传：拖拽 + 点击
  * ==================================================================== */
+/* 上传前压缩：手机原图动辄 5-8MB，base64 后超过函数 3MB 上限直接 413；
+   长边压到 1600px、JPEG 0.85，手写体的笔画仍然看得清 */
+const IMG_MAX_SIDE = 1600;
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        const k = Math.min(1, IMG_MAX_SIDE / Math.max(w, h));
+        w = Math.max(1, Math.round(w * k));
+        h = Math.max(1, Math.round(h * k));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL('image/jpeg', 0.85));
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
 function setupDropzone(type) {
   const dz = $(`dropzone${type === 'question' ? 'Question' : 'Essay'}`);
   const input = $(`file${type === 'question' ? 'Question' : 'Essay'}`);
@@ -378,14 +414,13 @@ function setupDropzone(type) {
   const addFiles = (files) => {
     Array.from(files).forEach((file, i) => {
       if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
+      compressImage(file).then((dataUrl) => {
+        if (!dataUrl) return;
         const id = `${type}-${Date.now()}-${i}`;
-        state.images[type].push({ id, dataUrl: e.target.result, name: file.name });
+        state.images[type].push({ id, dataUrl, name: file.name });
         renderThumbs(type);
         refreshGoStep2();
-      };
-      reader.readAsDataURL(file);
+      });
     });
   };
 
@@ -538,8 +573,9 @@ async function edgeOcr(dataUrl) {
     throw new Error(json.error || '登录已过期，请重新登录');
   }
   if (!resp.ok) throw new Error('Edge OCR ' + resp.status + '：' + (json.error || JSON.stringify(json).slice(0, 200)));
-  if (!json.text) throw new Error('OCR 未识别出文字：' + JSON.stringify(json).slice(0, 200));
-  return json.text;
+  const got = String(json.text || '').trim();
+  if (!got) throw new Error('没识别出文字（图片可能太糊、太暗或方向反了）');
+  return got;
 }
 
 /* 由前端统一结账：让大模型自己算总分靠不住（会出现「扣 2 分但总分没减」），
@@ -767,10 +803,10 @@ async function ocrRecognize(type) {
   const mode = state.config.mode;
 
   if (mode === 'mock') {
-    await new Promise((r) => setTimeout(r, 1500));
-    if (type === 'essay') return state.ocr.essay || '';
-    if (type === 'question') return state.ocr.question || '';
-    return '';
+    await new Promise((r) => setTimeout(r, 300));
+    const cached = state.ocr[type] || '';
+    if (cached) return cached;
+    throw new Error('当前是演示模式，不会真的识别文字。请点右上角「⚙ 设置」把模式切换到「Edge 代理」，或改用「载入示例作文」。');
   }
 
   if (mode === 'edge') {
@@ -2069,6 +2105,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
       updateCharCount();
       goStep(2);
+      if (!($('ocrEssay').value || '').trim()) {
+        flashToast('⚠️ 没识别出文字：请换一张更清晰、方向正的照片，或直接粘贴文本');
+      }
     } catch (e) {
       alert('OCR 识别失败：' + e.message);
     } finally {
